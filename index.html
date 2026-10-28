@@ -6837,6 +6837,112 @@ AK.config({
 })(globalThis.AK);
 
 
+/* ===== game/zz-mobile.js ===== */
+// ============================================================================
+//  V12 — SMARTPHONE EN MODE PAYSAGE (extension côté jeu : le moteur n'est PAS modifié)
+//  Ne s'active QUE sur un écran tactile de petite taille (pointeur « coarse », petit côté ≤ 700 px) en paysage :
+//  sur ordinateur, la mise en page, les polices et les menus restent strictement identiques.
+//   • mise en page « téléphone » : panneau plus haut (124 px), gros boutons de verbes, inventaire à grandes cases,
+//     boutons ☰ et ? agrandis, polices du mode tactile ; bulles de dialogue un peu plus grandes ;
+//     menu ☰ à lignes hautes (34 px) pour le pouce ;
+//   • plein écran automatique : à la rotation en paysage (et au chargement si le téléphone est déjà couché) ; si le navigateur
+//     exige un geste, une pastille « Touchez l'écran… » s'affiche et le premier toucher passe en plein écran ;
+//     verrouille l'orientation en paysage quand c'est possible (Android) ; iPhone : astuce « Sur l'écran d'accueil ».
+//  Réglages d'URL : ?mobile=1 force le mode téléphone (test sur ordinateur) · ?mobile=0 le désactive.
+// ============================================================================
+(function (AK) {
+  'use strict';
+  if (typeof window === 'undefined' || typeof document === 'undefined' || !AK.layout) return;
+  const qs = (() => { try { return new URLSearchParams(location.search).get('mobile'); } catch (e) { return null; } })();
+  const mq = (q) => { try { return window.matchMedia(q).matches; } catch (e) { return false; } };
+  const phone = () => {
+    if (qs === '0') return false; if (qs === '1') return true;
+    let small = false; try { small = Math.min(screen.width, screen.height) <= 700; } catch (e) { /* ignoré */ }
+    return mq('(pointer: coarse)') && small;
+  };
+  AK.PHONE = phone;
+
+  // ---------- mise en page téléphone (paysage = mode « wide » du moteur) ----------
+  const base = AK.layout;
+  AK.layout = function (cfg, mode, aspect) {
+    const L = base.call(this, cfg, mode, aspect);
+    if (mode !== 'wide' || !phone()) return L;                 // ordinateur et portrait : résultat inchangé
+    const W = L.w, VH = L.viewH, cols = 3, rows = Math.ceil(cfg.verbs.length / cols), PH = 124;
+    L._phone = true; L.mode = 'tall';                          // polices et lignes de choix du mode tactile
+    L.panelH = PH; L.totalH = VH + PH; L.panelY = VH;
+    L.sentence = { x: 6, y: VH + 2, w: W - 12, h: 20 };
+    const vy = VH + 24, vw = 82, rh = Math.floor((PH - 28) / rows);
+    L.verbs = cfg.verbs.map((v, i) => ({ id: v.id, x: 4 + (i % cols) * vw, y: vy + Math.floor(i / cols) * rh, w: vw - 3, h: rh - 3 }));
+    const ix = 4 + cols * vw + 8, iw = W - ix - 34, icols = Math.max(3, Math.floor(iw / 54)), sw = iw / icols, sh = 47;
+    L.invArea = { x: ix, y: vy, w: iw, h: 2 * sh };
+    L.slots = []; for (let r = 0; r < 2; r++) for (let c = 0; c < icols; c++) L.slots.push({ x: ix + c * sw, y: vy + r * sh, w: sw - 3, h: sh - 3 });
+    L.up = { x: W - 30, y: vy, w: 26, h: 45 }; L.down = { x: W - 30, y: vy + 47, w: 26, h: 45 };
+    L.menuBtn = { x: W - 40, y: 11, w: 30, h: 28 }; L.hintBtn = { x: W - 76, y: 11, w: 30, h: 28 }; L.portrait = 40;
+    L.perPage = L.slots.length; L.verbMap = {}; L.verbs.forEach((v) => (L.verbMap[v.id] = v));
+    return L;
+  };
+
+  // bulles de dialogue et menu ☰ plus lisibles (uniquement en mode téléphone)
+  if (AK.UI) {
+    const P = AK.UI.prototype; const F0 = P.F, say0 = P.say, menu0 = P.menuRect;
+    P.F = function (px, bold, italic) { return F0.call(this, px * (this._fx || 1), bold, italic); };
+    P.say = function (o) { if (this.L && this.L._phone) { this._fx = 1.12; try { return say0.call(this, o); } finally { this._fx = 1; } } return say0.call(this, o); };
+    P.menuRect = function () {
+      const r = menu0.call(this);
+      if (!(this.L && this.L._phone)) return r;
+      const w = 280, rh = 34, h = r.items.length * rh + 40;
+      return { x: (this.L.w - w) / 2, y: Math.max(6, (this.L.viewH - h) / 2 + 8), w, h, rh, items: r.items };
+    };
+  }
+
+  // ---------- plein écran automatique en paysage ----------
+  const de = document.documentElement;
+  const fsOn = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+  const canFs = !!(de.requestFullscreen || de.webkitRequestFullscreen);
+  const landscape = () => window.innerWidth > window.innerHeight;
+  const ios = /iPad|iPhone|iPod/.test(navigator.userAgent || '') || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const standalone = () => mq('(display-mode: standalone)') || navigator.standalone === true;
+  let hint = null, armed = false;
+
+  function showHint(text, ms) {
+    if (!hint) {
+      hint = document.createElement('div');
+      hint.style.cssText = 'position:fixed;left:50%;bottom:calc(10px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:9;max-width:90vw;padding:8px 16px;border-radius:18px;background:rgba(10,6,20,.82);border:1px solid rgba(255,211,90,.55);color:#ffd35a;font:600 13px/1.3 system-ui,sans-serif;text-align:center;pointer-events:none;transition:opacity .4s';
+      document.body.appendChild(hint);
+    }
+    hint.textContent = text; hint.style.opacity = '1'; clearTimeout(hint._t); hint._t = setTimeout(hideHint, ms || 8000);
+  }
+  function hideHint() { if (hint) { hint.style.opacity = '0'; } }
+
+  async function goFullscreen() {
+    if (!canFs || fsOn()) return fsOn();
+    try {
+      const p = (de.requestFullscreen || de.webkitRequestFullscreen).call(de, { navigationUI: 'hide' }); if (p && p.then) await p;
+      try { if (screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape'); } catch (e) { /* non supporté (iOS, bureau) */ }
+      hideHint(); return true;
+    } catch (e) { return false; }
+  }
+  // le navigateur exige un geste de l'utilisateur : on arme un « premier toucher » qui déclenche le plein écran
+  function arm() {
+    if (armed) return; armed = true; showHint('Touchez l’écran pour passer en plein écran');
+    const fire = () => { goFullscreen().then((ok) => { if (ok || fsOn()) { armed = false; ['pointerup', 'touchend', 'click'].forEach((t) => window.removeEventListener(t, fire, true)); } }); };
+    ['pointerup', 'touchend', 'click'].forEach((t) => window.addEventListener(t, fire, true));
+  }
+  function onRotate() {
+    if (!phone() || !landscape() || fsOn()) return;
+    if (!canFs) {                                              // iPhone : pas d'API plein écran dans Safari
+      if (ios && !standalone()) { let seen = false; try { seen = sessionStorage.getItem('ak:fshint') === '1'; sessionStorage.setItem('ak:fshint', '1'); } catch (e) { /* ignoré */ } if (!seen) showHint('Plein écran : Partager ▸ « Sur l’écran d’accueil »', 9000); }
+      return;
+    }
+    goFullscreen().then((ok) => { if (!ok) arm(); });
+  }
+  let timer = null; const later = () => { clearTimeout(timer); timer = setTimeout(onRotate, 250); };
+  window.addEventListener('orientationchange', later); window.addEventListener('resize', later);
+  document.addEventListener('fullscreenchange', () => { if (fsOn()) hideHint(); });
+  if (document.readyState === 'complete') later(); else window.addEventListener('load', later);
+})(globalThis.AK);
+
+
 /* ===== game/zz-peinture.js ===== */
 // ============================================================================
 //  V11 — DIRECTION ARTISTIQUE « GRANDS MAÎTRES » (aucun code moteur : on enrobe SceneRenderer.finishBg et .bake)
