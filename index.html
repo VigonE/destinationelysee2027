@@ -8064,6 +8064,23 @@ AK.config({
 })(globalThis.AK);
 
 
+/* ===== game/zz-musique.js ===== */
+// ============================================================================
+//  Musique COUPÉE PAR DÉFAUT (décision de direction : on y reviendra plus tard).
+//  Aucun code moteur : on règle seulement AK.music.enabled avant le démarrage.
+//  Le joueur peut la rallumer dans le menu (« Musique : non / oui ») ; son choix est mémorisé (localStorage 'ak:music') et respecté ensuite.
+//  Les effets sonores (« Son ») ne sont pas touchés. Les thèmes (scene.music) restent déclarés : rien à refaire pour la remettre par défaut
+//  (supprimer ce fichier suffit).
+// ============================================================================
+(function (AK) {
+  'use strict';
+  if (!AK.music) return;
+  let on = false;
+  try { if (typeof localStorage !== 'undefined' && localStorage.getItem('ak:music') === '1') on = true; } catch (e) { /* stockage indisponible : reste coupée */ }
+  AK.music.enabled = on;
+})(globalThis.AK);
+
+
 /* ===== game/zz-peinture.js ===== */
 // ============================================================================
 //  V11 — DIRECTION ARTISTIQUE « GRANDS MAÎTRES » (aucun code moteur : on enrobe SceneRenderer.finishBg et .bake)
