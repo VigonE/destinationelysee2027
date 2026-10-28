@@ -7763,6 +7763,56 @@ AK.config({
 })(globalThis.AK);
 
 
+/* ===== game/zz-gameplay.js ===== */
+// ============================================================================
+//  V21 — PRIORITÉ AUX PERSONNES quand on donne / utilise un objet.
+//  Problème : « Donner X à … » se confondait avec un élément de décor voisin (bureau, pupitre, tableau…) à qui l'on ne peut rien donner.
+//  Règle (hors moteur : on enveloppe Game.hit et on arme un témoin depuis l'UI) :
+//    · verbe DONNER avec un objet déjà en main → la cible est toujours la personne la plus proche du clic (≤ 70 px) ; sans personne, comportement inchangé ;
+//    · UTILISER/autre verbe à deux objets avec un OBJET d'inventaire déjà choisi → la zone de clic des personnes est élargie (cible « généreuse »),
+//      mais un décor franchement visé reste prioritaire hors de cette zone.
+//  Le moteur n'est pas modifié ; sans UI (tests) le témoin n'est jamais armé : aucun changement.
+// ============================================================================
+(function (AK) {
+  const G = AK.Game && AK.Game.prototype; if (!G || !G.hit) return;
+  const U = AK.util, hit0 = G.hit;
+
+  function personnes(g) {
+    const sc = g.sc();
+    return [...g.sceneNpcs().map((n) => ({ kind: 'npc', id: n.id, st: n.st, def: n.def, char: g.reg.characters[n.def.char] })),
+      ...g.otherHeroes().map((h) => ({ kind: 'hero', id: h.id, st: h.st, def: g.reg.characters[h.id], char: g.reg.characters[h.id] }))]
+      .map((a) => { const m = AK.charMetrics(a.char), s = U.depthScale(sc, a.st.y); return Object.assign(a, { w: m.w * s, h: m.h * s }); });
+  }
+  const ref = (g, a) => ({ kind: a.kind, id: a.id, def: a.def, name: a.kind === 'npc' ? g.npcName(a.id) : a.char.name });
+
+  G.hit = function (x, y) {
+    const r = hit0.call(this, x, y); const mode = this._prioPersonne;
+    if (!mode || (r && r.kind !== 'hotspot')) return r;          // une personne est déjà visée, ou rien n'est armé
+    const P = personnes(this); if (!P.length) return r;
+    if (mode === 'give') {                                       // DONNER : la personne la plus proche du clic gagne toujours
+      let best = null, bd = 70;
+      for (const a of P) { const cx = a.st.x, cy = a.st.y - a.h * 0.5; const d = Math.hypot((x - cx) * 0.8, (y - cy) * 1.0); if (d < bd) { bd = d; best = a; } }
+      return best ? ref(this, best) : r;
+    }
+    for (const a of P) {                                         // objet d'inventaire en main : zone élargie autour des personnes
+      const w = a.w * 0.95, top = a.h * 1.12;
+      if (x >= a.st.x - w && x <= a.st.x + w && y >= a.st.y - top && y <= a.st.y + 10) return ref(this, a);
+    }
+    return r;
+  };
+
+  const UI = AK.UI && AK.UI.prototype; if (!UI) return;
+  // le témoin est recalculé à chaque image et juste avant chaque clic : il suit le verbe et l'objet choisis
+  const arm = (ui) => {
+    const g = ui.game; if (!g) return;
+    const f = ui.first; const inv = f && f.kind === 'item';
+    g._prioPersonne = !inv ? null : (ui.verb === 'give' ? 'give' : 'inv');   // seulement au 2e clic (objet déjà en main)
+  };
+  const upd = UI.update; UI.update = function (dt) { arm(this); return upd.call(this, dt); };
+  const pd = UI.pointerDown; UI.pointerDown = function (x, y, b) { arm(this); return pd.call(this, x, y, b); };
+})(globalThis.AK);
+
+
 /* ===== game/zz-hd-overrides.js ===== */
 // ============================================================================
 //  V6 — Finitions HD appliquées aux primitives EXISTANTES (mêmes signatures, mêmes coordonnées) :
