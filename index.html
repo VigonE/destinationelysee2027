@@ -3784,14 +3784,19 @@ function createMusic(a, out) {
     const apres = sondage(st)[h], opp2 = adversaire(st, h), d1 = opp2 ? duels(st, h)[opp2] : null;
     let ligne = 'SONDAGE — ' + nomc(h) + ' : ' + f1(avant) + ' % → ' + f1(apres) + ' % (' + signe(apres - avant, 1) + ')';
     if (opp2 && d1 !== null) ligne += '   ·   Face à ' + nomc(opp2) + ' au second tour : ' + Math.round(d1) + ' %' + (opp === opp2 && d0 !== null ? ' (' + signe(d1 - d0, 1) + ')' : '');
-    await api.run([{ call: 'infos', args: { id: a.id, l: a.l, nom: nomc(h), fiche: o.fiche, avant, apres } }]);   // V19 : flash d'infos (navigateur seulement)
-    await api.run([{ sfx: apres - avant >= 0 ? 'ok' : 'buzz' }, { say: ligne, who: 'narrator' },
+    // V19/V20 : flash d'infos (navigateur seulement) : il porte le sondage, les effets, l'impact et — la première fois — la note de marge
+    const io = api.game && api.game.io; if (io) io._flashVu = false;
+    const margeNeuve = !api.flag('marge_' + a.id) && s.marge;
+    await api.run([{ call: 'infos', args: { id: a.id, l: a.l, nom: nomc(h), avant, apres, fiche: o.fiche,
+      effets: (eff(v) || 'aucun effet chiffré') + (info.extra ? '  ·  LASSITUDE (même ligne trop souvent)' : '') + (opp2 && d1 !== null ? '   ·   Second tour face à ' + nomc(opp2) + ' : ' + Math.round(d1) + ' %' : ''), marge: margeNeuve || '' } }]);
+    const vu = !!(io && io._flashVu);
+    if (!vu) await api.run([{ sfx: apres - avant >= 0 ? 'ok' : 'buzz' }, { say: ligne, who: 'narrator' },
       { say: 'EFFETS — ' + (eff(v) || 'aucun effet chiffré') + (info.extra ? '  ·  LASSITUDE (même ligne trop souvent)' : ''), who: 'narrator' },
       { say: 'FICHE D\'IMPACT — ' + o.fiche, who: 'narrator' }]);
     for (const n of info.notes || []) await api.run([{ say: n, who: 'narrator' }]);   // V14 : erreur d'appréciation / conséquence d'un choix antérieur
     if (o.h && o.h[hero] && o.h[hero].note) await api.run([{ say: 'DIFFICULTÉ — ' + o.h[hero].note, who: 'narrator' }]);   // V11
     if (ret) await api.run([{ say: 'DÉSISTEMENT — ' + M().CAND[ret].nom + ' quitte la course. Ses électeurs se reportent sur les candidats restants.', who: 'narrator' }]);
-    if (!api.flag('marge_' + a.id) && s.marge) { api.setFlag('marge_' + a.id); await api.run([{ say: 'NOTE DE MARGE — ' + s.marge, who: 'narrator' }]); }
+    if (!api.flag('marge_' + a.id) && s.marge) { api.setFlag('marge_' + a.id); if (!vu) await api.run([{ say: 'NOTE DE MARGE — ' + s.marge, who: 'narrator' }]); }
     // défaites immédiates
     if (st.tres < 0) { await defaite(api, 'tres'); return; }
     if (st[h + '_cred'] <= 3) { await defaite(api, 'cred'); return; }
@@ -4434,6 +4439,8 @@ AK.config({
     { if: ['ch_2', '!ch_3', 'hero:leon', '!seq_salaires'], say: 'À la Bourse du travail : Dédé, le cheminot, attend vos engagements sur les salaires.' },
     { if: ['ch_2', '!ch_3', 'hero:bernard', '!seq_eurogroupe'], say: 'À Bercy : un diplomate européen vous attend avant la réunion de l\'Eurogroupe.' },
     { if: ['ch_2', '!ch_3', 'hero:bernard', '!seq_cac40'], say: 'À Bercy : un PDG du CAC 40 vous invite à dîner.' },
+    { if: ['ch_2', '!ch_3', '!seq_patronat'], say: 'À Marseille, près du barrage : Hubert Delorme, le patron des transporteurs, veut savoir où vous mettrez les marchés dans votre budget.' },
+    { if: ['ch_2', '!ch_3', '!seq_crise'], say: 'À Marseille : la voiture de la radio locale attend votre réaction à la crise. Parlez au journaliste, près du camion.' },
     { if: ['ch_2', '!ch_3'], say: 'Chapitre 2 : barrage, Matignon, Assemblée, votre lieu de campagne. Chaque choix a un prix, chaque objet un usage.' },
     { if: ['ch_3', '!ch_4', '!seq_photo_vache', '!has:seau', '!has:seau_lait'], say: 'Salon de l\'agriculture : il y a un seau près de la barrière. La vache, elle, attend près des bottes de foin.' },
     { if: ['ch_3', '!ch_4', '!seq_photo_vache', 'has:seau'], say: 'Utilisez le seau avec la vache : vous trairez Marianne.' },
@@ -4457,6 +4464,13 @@ AK.config({
     { if: ['ch_3', '!ch_4', 'hero:leon', '!seq_ecologie'], say: 'À la Maison de la gauche : la militante du collectif climat vous attend.' },
     { if: ['ch_3', '!ch_4', 'hero:bernard', '!seq_elysee'], say: 'À la mairie : un conseiller de l\'Élysée veut vous parler du soutien du Président.' },
     { if: ['ch_3', '!ch_4', 'hero:bernard', '!seq_reformes'], say: 'À Bercy : la directrice du Trésor veut connaître le rythme de vos réformes.' },
+    { if: ['ch_3', '!ch_4', '!seq_paysan'], say: 'Au Salon de l\'agriculture : Colette Roux, éleveuse, attend de vous une position sur la protection des prix.' },
+    { if: ['ch_3', '!ch_4', 'hero:marion', '!seq_union_droites'], say: 'À l\'Assemblée : Étienne Rochas (Droite Républicaine) vous attend : parlez-lui d\'une alliance.' },
+    { if: ['ch_3', '!ch_4', 'hero:marion', '!seq_pouvoir_local'], say: 'À la permanence : Jocelyne Wattier veut savoir ce que vous ferez pour le pouvoir d\'achat local.' },
+    { if: ['ch_3', '!ch_4', 'hero:leon', '!seq_fonction_publique'], say: 'À la Bourse du travail : Hervé Gaudin attend vos engagements sur la fonction publique.' },
+    { if: ['ch_3', '!ch_4', 'hero:leon', '!seq_union_gauche'], say: 'À la Maison de la gauche : Anaïs Perrot vous demande si vous jouerez seul ou à plusieurs.' },
+    { if: ['ch_3', '!ch_4', 'hero:bernard', '!seq_retraites'], say: 'À Bercy : la ministre des Comptes publics attend votre position sur l\'âge de départ à la retraite.' },
+    { if: ['ch_3', '!ch_4', 'hero:bernard', '!seq_maires'], say: 'À la mairie : Maurice Valade, président d\'une association de maires, attend vos promesses aux communes.' },
     { if: ['ch_3', '!ch_4'], say: 'Chapitre 3 : le Salon, le plateau, le QG, vos deux lieux de campagne personnels. Surveillez les parrainages (jauge à droite).' },
     { if: ['ch_4', '!ch_5', '!seq_greffe', '!has:loupe', '!erreur_vue'], say: 'Au Conseil constitutionnel : trois présentations ont été renvoyées. Il y a une loupe sur le bureau du secrétaire général.' },
     { if: ['ch_4', '!ch_5', '!seq_greffe', '!has:presentation_refusee', '!has:presentation_corrigee'], say: 'Le bac des présentations renvoyées est sur la table annexe, à gauche.' },
@@ -4486,6 +4500,9 @@ AK.config({
     { if: ['ch_4', '!ch_5', 'hero:leon', '!seq_services'], say: 'À la Maison de la gauche : la militante attend votre plan pour les services publics.' },
     { if: ['ch_4', '!ch_5', 'hero:bernard', '!seq_haute_fonction'], say: 'À Bercy : la directrice du Trésor attend votre position sur les grands corps.' },
     { if: ['ch_4', '!ch_5', 'hero:bernard', '!seq_spread'], say: 'À Bercy : le diplomate vous alerte sur l\'écart de taux avec l\'Allemagne.' },
+    { if: ['ch_4', '!ch_5', 'hero:marion', '!seq_immigration'], say: 'À la permanence : Roger Delmas, un retraité à casquette, attend votre ligne sur l\'immigration.' },
+    { if: ['ch_4', '!ch_5', 'hero:leon', '!seq_quartiers'], say: 'À la Maison de la gauche : Samir Haddad, militant de quartier, attend vos engagements sur la police et la justice.' },
+    { if: ['ch_4', '!ch_5', 'hero:bernard', '!seq_union_centre'], say: 'À la mairie : Aurélien Vasseur (Renouveau) veut savoir si vous unirez vos forces.' },
     { if: ['ch_4', '!ch_5'], say: 'Chapitre 4 : le dernier lieu de campagne de votre candidat. Il faut 500 parrainages.' },
     { if: ['ch_5', '!debat_fait', '!seq_maquillage', '!has:poudre'], say: 'Avant le débat : un poudrier traîne près de la coiffeuse du plateau. Un visage qui brille se perd.' },
     { if: ['ch_5', '!debat_fait', '!seq_maquillage', 'has:poudre'], say: 'Utilisez la poudre avec la coiffeuse : un coup de pinceau avant le direct.' },
@@ -8595,7 +8612,8 @@ AK.config({
 
   if (UI) {
   UI.infos = function (o) {
-    return new Promise((res) => { this.news = Object.assign({ t: 0, res, dur: 5.2 }, o); });
+    const extra = [o.effets, o.fiche, o.marge].filter(Boolean).join(' ').length;   // lecture ≈ 28 ms/caractère de texte annexe
+    return new Promise((res) => { this.news = Object.assign({ t: 0, res, dur: Math.min(16, 5.2 + extra * 0.028) }, o); });
   };
 
   const upd = UI.update;
@@ -8626,11 +8644,14 @@ AK.config({
     const L = ui.L, W = L.w, H = L.totalH, t = n.t;
     const aIn = ease(t / 0.45), aOut = clamp((n.dur - t) / 0.4, 0, 1), A = Math.min(aIn, aOut);
     ctx.save(); ctx.globalAlpha = A * 0.92; ctx.fillStyle = '#05070d'; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = A;
-    const pw = Math.min(W - 24, 330), px = (W - pw) / 2, slide = (1 - aIn) * 22;
+    const pw = Math.min(W - 24, 400), px = (W - pw) / 2, slide = (1 - aIn) * 22;
     const m = MEDIAS[n.f] || MEDIAS.c;
     const tit = lignes(ui, ctx, n.titre, pw - 28, ui.F(n.f === 'j' ? 13 : 12, true));
     const sou = lignes(ui, ctx, n.sous, pw - 28, ui.F(9.5, false));
-    const ph = (n.f === 'j' ? 70 : 52) + tit.length * 15 + sou.length * 12, py = Math.max(10, (H - ph) / 2) + slide;
+    const ph = (n.f === 'j' ? 70 : 52) + tit.length * 15 + sou.length * 12;
+    const blocs = [['EFFETS', n.effets, '#ffd35a'], ['IMPACT', n.fiche, '#cfd8e8'], ['POUR COMPRENDRE', n.marge, '#8fa0bd']].filter((b) => b[1]).map((b) => ({ k: b[0], c: b[2], l: lignes(ui, ctx, b[1], pw - 12, ui.F(8.5, false)) }));
+    const hb = blocs.reduce((a, b) => a + 12 + b.l.length * 11, 0), total = ph + 40 + hb;
+    const py = Math.max(8, (H - total) / 2) + slide;
     ctx.translate(0, 0);
     if (n.f === 'j') {                                   // une de journal
       ctx.save(); ctx.translate(W / 2, py + ph / 2); ctx.rotate(-0.018 * (1 - aIn * 0.6)); ctx.translate(-W / 2, -(py + ph / 2));
@@ -8657,6 +8678,14 @@ AK.config({
     }
     // sondage (sous le panneau)
     sondage(ui, ctx, px + 4, py + ph + 10, pw - 8, n, clamp((t - 0.9) / 1.6, 0, 1));
+    let by = py + ph + 42; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    blocs.forEach((b, i) => {
+      const k = clamp((t - 1.4 - i * 0.5) / 0.4, 0, 1); ctx.globalAlpha = A * k;
+      ctx.font = ui.F(7.5, true); ctx.fillStyle = b.c; ctx.fillText(b.k, px + 6, by + 5);
+      ctx.font = ui.F(8.5, false); ctx.fillStyle = b.k === 'POUR COMPRENDRE' ? '#9fb0cb' : '#dfe6f3'; b.l.forEach((l, j) => ctx.fillText(l, px + 6, by + 16 + j * 11));
+      by += 12 + b.l.length * 11;
+    });
+    ctx.globalAlpha = A;
     if (t > 0.7 && t < n.dur - 0.4) { ctx.font = ui.F(7.5, false); ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.textAlign = 'center'; ctx.fillText('clic / espace pour continuer', W / 2, H - 8); }
     ctx.restore();
   }
@@ -8676,7 +8705,8 @@ AK.config({
     if (!io || !io.ui || !io.ui.infos) return;
     const f = AK.flashOf(a.id, a.l, a.nom, a.fiche);
     try { io.sfx && io.sfx(a.apres - a.avant >= 0 ? 'bell' : 'buzz'); } catch (e) { /* silence */ }
-    await io.ui.infos({ f: f.f, titre: f.titre, sous: f.sous, avant: a.avant, apres: a.apres, nom: a.nom });
+    io._flashVu = true;   // le choix lit ce témoin : le flash remplace alors les lignes de narrateur SONDAGE / EFFETS / IMPACT / NOTE DE MARGE
+    await io.ui.infos({ f: f.f, titre: f.titre, sous: f.sous, avant: a.avant, apres: a.apres, nom: a.nom, effets: a.effets, fiche: a.fiche, marge: a.marge });
   });
 })(globalThis.AK);
 
@@ -11507,7 +11537,7 @@ AK.piece({
     choc493: ['qg', 'dc'], mediapart: ['qg', 'dc'], fronde: ['qg', 'dc'], donateur: ['qg', 'fabre'], plafond: ['conseil_constit', 'sg'] };
 
   // L : { séquence: lettre } ; fin : étapes finales ; stop : séquence après laquelle la partie s'arrête (défaite) — à la fin du chapitre qui la contient
-  function partie(hero, L, fin, stop) {
+  function partie(hero, L, fin, stop, ordre) {
     const out = []; let cur = 'accueil';
     const aller = (sc) => {
       if (cur === sc) return;
@@ -11605,7 +11635,7 @@ AK.piece({
       if (id === 'parrainages') P(['pick', 'rapport_cdc']);
     };
     let arret = false;
-    for (const k of C.ORDRE(hero)) {
+    for (const k of (ordre || C.ORDRE(hero))) {
       if (k[0] === '|') {
         const n = +k[1];
         if (n === 5) { if (arret) return out.concat(fin); P(['expect', { flags: ['ch_5'] }]); break; }
@@ -11633,6 +11663,7 @@ AK.piece({
     return out.concat(fin);
   }
   const jusquAuBout = (hero, L, fin) => partie(hero, L, fin);
+  AK.PARTIE = { partie, L: () => ({ marion: MAR, leon: LEO, bernard: BER }) };   // V20 : utilisé par tests/ordre-libre.test.mjs (parcours à ordre mélangé)
 
   const MAR = { ligne: 'A', plf: 'C', sondage: 'C', fuite: 'A', financement: 'C', greve: 'C', patronat: 'A', crise: 'C', matignon: 'C', censure: 'C', baron: 'C', paysan: 'B', attaque: 'A', union_droites: 'B', pouvoir_local: 'A', parrainages: 'A', immigration: 'B', d_budget: 'B', d_secu: 'B', d_europe: 'C', d_pouvoir: 'B', duel_retraites: 'C', duel_institutions: 'C', duel_ecologie: 'B', duel_barrage: 'B', choc493: 'B', mediapart: 'B', donateur: 'A', plafond: 'B', fronde: 'B', police: 'B', polemiste: 'C', plafond_verre: 'B', enclaves: 'B', metropoles: 'B', fait_divers: 'B', qag: 'C', matinale: 'B', meeting: 'C' };
   const LEO = { ligne: 'C', plf: 'C', sondage: 'B', fuite: 'A', financement: 'A', greve: 'C', patronat: 'A', crise: 'A', matignon: 'C', qag: 'A', syndicats: 'B', baron: 'C', paysan: 'C', attaque: 'A', matinale: 'B', fonction_publique: 'B', union_gauche: 'B', parrainages: 'A', quartiers: 'C', meeting: 'C', d_budget: 'C', d_secu: 'A', d_europe: 'C', d_pouvoir: 'C', duel_retraites: 'C', duel_institutions: 'C', duel_ecologie: 'C', duel_barrage: 'B', choc493: 'B', mediapart: 'C', donateur: 'A', plafond: 'B', fronde: 'B', isf: 'C', salaires: 'B', capitaux: 'B', ecologie: 'B', greve_generale: 'C', services: 'B' };
