@@ -3505,7 +3505,7 @@ function createMusic(a, out) {
   // La lassitude : au‑delà de 6 fois la même ligne, l'électorat (et la presse) s'en lasse — [crédibilité, médias, rejet, loyauté]
   const LASSITUDE = { A: [-1, 0, 2, 0], B: [0, -2, 0, -2], C: [-2, -2, 0, 0] };
 
-  const PARAM = { DER: 30, LASS: 10, USURE_L: 4, USURE_M: 2, REJ_MIN: { marion: 3, leon: 6, bernard: 6 }, DYN_L: 3, URNE1: 2, URNE2: 2.5 };   // dérive maximale de la ligne (centièmes)
+  const PARAM = { DER: 30, LASS: 13, USURE_L: 4, USURE_M: 2, REJ_MIN: { marion: 3, leon: 6, bernard: 6 }, DYN_L: 3, URNE1: 2, URNE2: 2.5 };   // dérive maximale de la ligne (centièmes)
   const SEQ = {};
   const AX_TXT = { e: ['plus rigoureuse', 'plus redistributive'], o: ['plus libertaire', 'plus autoritaire'], s: ['plus européenne', 'plus souverainiste'], r: ['plus de continuité', 'plus de rupture'] };
 
@@ -3659,9 +3659,9 @@ function createMusic(a, out) {
   };
   // séquences obligatoires pour passer au chapitre suivant (spécifiques à chaque héros)
   const HSEQ = {
-    marion: { 2: ['censure'], 3: ['union_droites', 'pouvoir_local'], 4: ['immigration'] },
-    leon: { 2: ['syndicats'], 3: ['fonction_publique', 'union_gauche'], 4: ['quartiers'] },
-    bernard: { 2: ['bercy'], 3: ['retraites', 'maires'], 4: ['union_centre'] },
+    marion: { 2: ['censure', 'police', 'polemiste'], 3: ['union_droites', 'pouvoir_local', 'plafond_verre', 'enclaves'], 4: ['immigration', 'metropoles', 'fait_divers'] },
+    leon: { 2: ['syndicats', 'isf', 'salaires'], 3: ['fonction_publique', 'union_gauche', 'capitaux', 'ecologie'], 4: ['quartiers', 'greve_generale', 'services'] },
+    bernard: { 2: ['bercy', 'eurogroupe', 'cac40'], 3: ['retraites', 'maires', 'elysee', 'reformes'], 4: ['union_centre', 'haute_fonction', 'spread'] },   // V13 : +2 séquences exclusives par chapitre et par candidat
   };
   const REQ = (hero, n) => ({
     1: ['ligne', 'plf', 'financement'],
@@ -4319,6 +4319,8 @@ AK.config({
     { if: { any: ['seq_rapport_police', 'seq_caisse_usine', 'seq_lettre_ue'] }, points: 4 }, { if: 'seq_greffe', points: 4 },
     { if: 'seq_meeting_son', points: 2 }, { if: 'seq_meeting_video', points: 2 }, { if: 'seq_meeting_discours', points: 2 }, { if: 'seq_meeting', points: 5 }, { if: 'seq_comptes_campagne', points: 5 }, { if: 'seq_doleances', points: 3 }, { if: 'seq_a_vote', points: 3 },
     { if: 'seq_maquillage', points: 2 }, { if: 'seq_cafe', points: 2 }, { if: 'has:note_tresor', points: 2 },
+    { if: { any: ['seq_police', 'seq_isf', 'seq_eurogroupe'] }, points: 2 }, { if: { any: ['seq_polemiste', 'seq_salaires', 'seq_cac40'] }, points: 2 }, { if: { any: ['seq_plafond_verre', 'seq_capitaux', 'seq_elysee'] }, points: 2 },
+    { if: { any: ['seq_enclaves', 'seq_ecologie', 'seq_reformes'] }, points: 2 }, { if: { any: ['seq_metropoles', 'seq_greve_generale', 'seq_haute_fonction'] }, points: 2 }, { if: { any: ['seq_fait_divers', 'seq_services', 'seq_spread'] }, points: 2 },
     { if: 'elu', points: 10 },
   ],
   hints: [
@@ -4355,6 +4357,12 @@ AK.config({
     { if: ['ch_2', '!ch_3', '!seq_doleances'], say: 'Facultatif : au café du Commerce, trois clients ont un petit service à demander (journal, chargeur, monnaie).' },
     { if: ['ch_2', '!ch_3', '!seq_choc493'], say: 'Votre directeur de campagne vous attend au QG : le Premier ministre vient d\'engager le 49.3, la motion de censure se décide en vingt‑quatre heures.' },
     { if: ['ch_2', '!ch_3', '!seq_mediapart'], say: 'Au QG : une enquête de presse paraît ce soir. Votre directeur de campagne attend votre réaction.' },
+    { if: ['ch_2', '!ch_3', 'hero:marion', '!seq_police'], say: 'À la permanence : la déléguée d\'un syndicat de police attend vos engagements.' },
+    { if: ['ch_2', '!ch_3', 'hero:marion', '!seq_polemiste'], say: 'À l\'Assemblée : un polémiste de plateau vous propose un face-à-face.' },
+    { if: ['ch_2', '!ch_3', 'hero:leon', '!seq_isf'], say: 'À la Maison de la gauche : l\'économiste Hélène Berthier veut savoir comment vous financerez votre programme.' },
+    { if: ['ch_2', '!ch_3', 'hero:leon', '!seq_salaires'], say: 'À la Bourse du travail : Dédé, le cheminot, attend vos engagements sur les salaires.' },
+    { if: ['ch_2', '!ch_3', 'hero:bernard', '!seq_eurogroupe'], say: 'À Bercy : un diplomate européen vous attend avant la réunion de l\'Eurogroupe.' },
+    { if: ['ch_2', '!ch_3', 'hero:bernard', '!seq_cac40'], say: 'À Bercy : un PDG du CAC 40 vous invite à dîner.' },
     { if: ['ch_2', '!ch_3'], say: 'Chapitre 2 : barrage, Matignon, Assemblée, votre lieu de campagne. Chaque choix a un prix, chaque objet un usage.' },
     { if: ['ch_3', '!ch_4', '!seq_photo_vache', '!has:seau', '!has:seau_lait'], say: 'Salon de l\'agriculture : il y a un seau près de la barrière. La vache, elle, attend près des bottes de foin.' },
     { if: ['ch_3', '!ch_4', '!seq_photo_vache', 'has:seau'], say: 'Utilisez le seau avec la vache : vous trairez Marianne.' },
@@ -4368,6 +4376,12 @@ AK.config({
     { if: ['ch_3', '!ch_4', 'hero:bernard', '!seq_lettre_ue'], say: 'À Bercy : un pli de la Commission européenne est cacheté sur le bureau. Un coupe‑papier est tout près.' },
     { if: ['ch_3', '!ch_4', '!seq_attaque'], say: 'Inès, la journaliste, vous attend au QG avec une question sur votre rival.' },
     { if: ['ch_3', '!ch_4', '!seq_donateur'], say: 'Mme Fabre, au QG, a reçu une offre de financement qui sent le soufre. Elle attend votre décision.' },
+    { if: ['ch_3', '!ch_4', 'hero:marion', '!seq_plafond_verre'], say: 'À l\'Assemblée : le polémiste veut parler du plafond de verre.' },
+    { if: ['ch_3', '!ch_4', 'hero:marion', '!seq_enclaves'], say: 'À la permanence : un maire rural vous attend.' },
+    { if: ['ch_3', '!ch_4', 'hero:leon', '!seq_capitaux'], say: 'À la Maison de la gauche : l\'économiste vous interroge sur la fuite des capitaux.' },
+    { if: ['ch_3', '!ch_4', 'hero:leon', '!seq_ecologie'], say: 'À la Maison de la gauche : la militante du collectif climat vous attend.' },
+    { if: ['ch_3', '!ch_4', 'hero:bernard', '!seq_elysee'], say: 'À la mairie : un conseiller de l\'Élysée veut vous parler du soutien du Président.' },
+    { if: ['ch_3', '!ch_4', 'hero:bernard', '!seq_reformes'], say: 'À Bercy : la directrice du Trésor veut connaître le rythme de vos réformes.' },
     { if: ['ch_3', '!ch_4'], say: 'Chapitre 3 : le Salon, le plateau, le QG, vos deux lieux de campagne personnels. Surveillez les parrainages (jauge à droite).' },
     { if: ['ch_4', '!ch_5', '!seq_greffe', '!has:loupe', '!erreur_vue'], say: 'Au Conseil constitutionnel : trois présentations ont été renvoyées. Il y a une loupe sur le bureau du secrétaire général.' },
     { if: ['ch_4', '!ch_5', '!seq_greffe', '!has:presentation_refusee', '!has:presentation_corrigee'], say: 'Le bac des présentations renvoyées est sur la table annexe, à gauche.' },
@@ -4385,6 +4399,12 @@ AK.config({
     { if: ['ch_4', '!ch_5', '!seq_comptes_campagne', 'has:classeur_comptes', 'has:cachet_expert'], say: 'Utilisez le cachet avec le classeur, puis remettez le classeur certifié au rapporteur.' },
     { if: ['ch_4', '!ch_5', '!seq_comptes_campagne', 'has:classeur_certifie'], say: 'Remettez le classeur certifié conforme à M. Delmas, rapporteur.' },
     { if: ['ch_4', '!ch_5', '!seq_meeting'], say: 'Le régisseur du Zénith lance le meeting quand le son, la vidéo et le discours sont prêts.' },
+    { if: ['ch_4', '!ch_5', 'hero:marion', '!seq_metropoles'], say: 'À la permanence : le maire rural attend votre position sur les ZFE.' },
+    { if: ['ch_4', '!ch_5', 'hero:marion', '!seq_fait_divers'], say: 'À la permanence : le commissaire vous attend : un fait divers fait l\'ouverture des chaînes d\'info.' },
+    { if: ['ch_4', '!ch_5', 'hero:leon', '!seq_greve_generale'], say: 'À la Bourse du travail : le cheminot vous prévient d\'une grève la veille du meeting.' },
+    { if: ['ch_4', '!ch_5', 'hero:leon', '!seq_services'], say: 'À la Maison de la gauche : la militante attend votre plan pour les services publics.' },
+    { if: ['ch_4', '!ch_5', 'hero:bernard', '!seq_haute_fonction'], say: 'À Bercy : la directrice du Trésor attend votre position sur les grands corps.' },
+    { if: ['ch_4', '!ch_5', 'hero:bernard', '!seq_spread'], say: 'À Bercy : le diplomate vous alerte sur l\'écart de taux avec l\'Allemagne.' },
     { if: ['ch_4', '!ch_5'], say: 'Chapitre 4 : le dernier lieu de campagne de votre candidat. Il faut 500 parrainages.' },
     { if: ['ch_5', '!debat_fait', '!seq_maquillage', '!has:poudre'], say: 'Avant le débat : un poudrier traîne près de la coiffeuse du plateau. Un visage qui brille se perd.' },
     { if: ['ch_5', '!debat_fait', '!seq_maquillage', 'has:poudre'], say: 'Utilisez la poudre avec la coiffeuse : un coup de pinceau avant le direct.' },
@@ -5806,7 +5826,12 @@ AK.config({
   const line = ([who, say]) => ({ who, say });
 
   AK.parler = (id, spec) => {
-    const seqs = spec.seqs || [];
+    // V13 : un prompt peut être propre à chaque candidat ({ marion: [...], leon: [...], bernard: [...] }) → une entrée par candidat, gardée par « candidat_<id> »
+    const seqs = [];
+    for (const s of spec.seqs || []) {
+      if (Array.isArray(s.prompt)) seqs.push(s);
+      else for (const h of Object.keys(s.prompt)) seqs.push(Object.assign({}, s, { cond: (s.cond || []).concat('candidat_' + h), prompt: s.prompt[h] }));
+    }
     const say = seqs.map((s) => ({ if: act(s), then: s.prompt.map(line) }));
     const rien = (r) => (r[2] ? { if: r[2], then: [line(r)] } : line(r));   // 3e élément facultatif : condition d'affichage de la réplique
     if (seqs.length) say.push({ if: { not: { any: seqs.map(act) } }, then: (spec.rien || []).map(rien) });
@@ -6119,6 +6144,315 @@ AK.config({
       C: { t: 'Un pacte de non‑agression pendant la campagne.', v: { c: 2, m: 1, j: -1 },
         rep: [['vasseur', 'Un pacte de non‑agression. Pourquoi pas ? Les attaques entre nous profitent aux autres.']],
         fiche: 'Pacte de non‑agression : atmosphère apaisée, aucun effet sur l\'offre électorale.' },
+    } });
+})(globalThis.AK);
+
+
+/* ===== game/seq-camp-bernard.js ===== */
+// ============================================================================
+//  V13 — BERNARD LAMY (Cap Central) : six séquences exclusives (technocrate, Bruxelles, marchés, hauts fonctionnaires)
+//  ch.2 : eurogroupe (diplomate, Bercy) · cac40 (PDG, Bercy)
+//  ch.3 : elysee (conseiller, mairie) · reformes (directeur du Trésor, Bercy)
+//  ch.4 : haute_fonction (directeur du Trésor) · spread (diplomate)
+//  Lettres : A = rupture · B = ligne institutionnelle · C = ligne tactique (voir TEMPERAMENT dans campagne.js).
+// ============================================================================
+(function (AK) {
+  const S = AK.sequence;
+
+  S('eurogroupe', {
+    marge: 'Un déficit supérieur à 3 % du PIB ouvre une « procédure de déficit excessif » (art. 126 du traité sur le fonctionnement de l\'UE). Le Pacte réformé en 2024 laisse négocier une trajectoire de 4 à 7 ans, contre des réformes. La Commission propose, le Conseil dispose.',
+    opts: {
+      A: { t: 'Je refuse la trajectoire de Bruxelles : le déficit se vote à Paris, pas à Bruxelles.', v: { s: 4, r: 3, c: -6, m: 4, j: 3, l: -2, t: -1 },
+        rep: [['diplo', 'Un bras de fer avec la Commission ? Les marchés adorent les bras de fer… pour vendre de la dette française.']],
+        fiche: 'Rupture avec Bruxelles : titres de presse, mais un candidat de la stabilité qui se dispute avec l\'Europe perd son meilleur atout.' },
+      B: { t: 'Je négocie un étalement sur sept ans en échange d\'un plan de réformes chiffré.', v: { c: 6, m: -1, j: -2, l: 1, s: -2, e: -1 },
+        rep: [['diplo', 'Sept ans contre des réformes précises : c\'est le langage que la Commission comprend. Le Conseil suivra, sauf accident.']],
+        fiche: 'Compromis européen : crédibilité en hausse auprès des marchés et des élus, aucun effet de manche.' },
+      C: { t: 'Je laisse fuiter la lettre : « Bruxelles nous impose six milliards de plus ».', v: { m: 5, c: -3, j: 1, p: 5, s: 2 },
+        rep: [['diplo', 'Une fuite ? Étrange coïncidence. La Commission note, et n\'oublie jamais.']],
+        fiche: 'Fuite calculée : un bon titre, une mauvaise réputation à Bruxelles.' },
+    } });
+
+  S('cac40', {
+    marge: 'Depuis 1995, les entreprises ne peuvent plus financer ni un parti ni une campagne : seuls les particuliers donnent, dans la limite du plafond légal. Un patron peut donc donner à titre personnel — et parler à l\'oreille du candidat.',
+    opts: {
+      A: { t: 'Je décline le dîner : aucun patron à ma table avant l\'élection.', v: { c: -3, m: 2, l: -1, t: -1, j: 1 },
+        rep: [['pdg', 'Dommage. Mes collègues se souviendront de votre refus. Les grandes entreprises ont de la mémoire — et des économistes.']],
+        fiche: 'Refus du dîner : image de rigueur, mais le monde économique se ferme.' },
+      B: { t: 'J\'y vais avec mon plan : baisse de charges contre embauches et apprentis, chiffrée.', v: { c: 5, t: 2, m: -2, j: 3, l: -2 },
+        si: { k: 'cred', min: 45, ok: { v: { t: 3, p: 10 } }, ko: { v: { c: -2, j: 1 } },
+          okSay: 'Les patrons repartent convaincus : plusieurs promettent des dons personnels, dans la limite légale, et un coup de main auprès de leurs maires.',
+          koSay: 'Les patrons restent polis et sceptiques : « Intéressant. Revenez avec un peu plus de crédit. »' },
+        rep: [['pdg', 'Un plan chiffré, voilà qui change des discours. Nous, on aime ce qui se compte.']],
+        fiche: 'Dîner assumé : financement et appuis possibles, mais l\'étiquette « candidat des grands patrons » colle.' },
+      C: { t: 'Un dîner privé, sans photographe, et pas un mot de plus qu\'en public.', v: { t: 2, c: 2, j: 2, l: -1 },
+        si: { k: 'media', min: 40, ok: { v: { m: 1 } }, ko: { v: { m: -3, j: 2 } },
+          okSay: 'Le dîner reste discret. La presse a d\'autres sujets ce soir.',
+          koSay: 'Un convive tweete la photo du dîner. Le titre du lendemain : « Les dîners secrets du candidat Lamy ».' },
+        rep: [['pdg', 'Discrétion garantie… jusqu\'au dessert. Après, je ne réponds plus de mes invités.']],
+        fiche: 'Dîner discret : tout dépend de la présence médiatique du moment, car le secret se paie cher.' },
+    } });
+
+  S('elysee', {
+    marge: 'Le Président est élu pour cinq ans, rééligible une fois (art. 6 de la Constitution). Ne pouvant plus se représenter, il a pourtant du poids : ministres, préfets, nominations. Son soutien est un atout dans l\'appareil, un fardeau dans l\'opinion.',
+    opts: {
+      A: { t: 'Je prends mes distances : « Je ne suis l\'héritier de personne ».', v: { j: -3, m: 3, c: -1, l: -2, r: 3 },
+        rep: [['conseiller', 'Mon cher Bernard, on ne rompt pas avec un président qui n\'a plus rien à perdre. Il a la rancune longue.']],
+        fiche: 'Distance affichée : le rejet baisse, mais l\'appareil se vexe.' },
+      B: { t: 'J\'accepte l\'appui discret de ministres, sans que le Président n\'apparaisse jamais.', v: { c: 4, p: 20, m: -1, j: 2 },
+        rep: [['conseiller', 'Une aide discrète, deux ministres sur les plateaux, un préfet qui décroche son téléphone. Je m\'en occupe.']],
+        fiche: 'Soutien discret : des parrainages et des relais, au risque d\'être accusé de continuité.' },
+      C: { t: 'Je demande un geste concret (une nomination, un texte) avant de dire oui.', v: { c: 2, m: 2, p: 10, j: 1, t: -1 },
+        rep: [['conseiller', 'Un geste ? Il vous demandera un geste en retour. Dans ce monde, on ne reçoit jamais rien gratuitement.']],
+        fiche: 'Donnant-donnant : vous gardez la main, la presse y verra du marchandage.' },
+    } });
+
+  S('reformes', {
+    marge: 'Une réforme structurelle (retraite, assurance chômage, marché du travail) produit ses effets sur les comptes en trois à cinq ans. Le calendrier compte autant que le contenu : rien n\'est plus dangereux qu\'une réforme annoncée sans date ni gage.',
+    opts: {
+      A: { t: 'Tout dans les cent premiers jours : retraites, assurance chômage, statut des agents.', v: { e: -4, r: 4, c: -2, m: 3, j: 5, l: -2 },
+        rep: [['directeur', 'Cent jours ? Les ordonnances, le 49.3, la rue. Vous aurez le Parlement contre vous avant l\'été.']],
+        fiche: 'Choc réformateur : un signal fort, un rejet fort.' },
+      B: { t: 'Un calendrier de cinq ans avec une clause de revoyure annuelle devant le Parlement.', v: { e: -2, c: 5, m: -2, j: -2, l: 1 },
+        rep: [['directeur', 'Étalé, chiffré, discuté devant les élus : c\'est lent, mais cela ne se renverse pas en six mois.']],
+        fiche: 'Réformes douces : crédibilité et acceptabilité, au prix de l\'enthousiasme.' },
+      C: { t: 'Une expérimentation dans trois régions volontaires : on évalue, puis on décide.', v: { c: 2, m: 1, j: -1, p: 5, e: -1 },
+        rep: [['directeur', 'Une expérimentation, c\'est la méthode du fonctionnaire prudent. On évalue, on rapporte, on enterre — ou on généralise.']],
+        fiche: 'Expérimentation : prudence appréciée, impression d\'immobilisme.' },
+    } });
+
+  S('haute_fonction', {
+    marge: 'Le « pantouflage » désigne le passage de la haute fonction publique au secteur privé. Il est contrôlé par la Haute Autorité pour la transparence de la vie publique. Les grands corps (Conseil d\'État, Cour des comptes, Inspection des finances) fournissent l\'essentiel des cabinets ministériels.',
+    opts: {
+      A: { t: 'Je supprime les grands corps : un concours unique, plus aucune carrière garantie.', v: { r: 4, e: -1, j: 4, c: -4, m: 5, l: -3 },
+        rep: [['directeur', 'Supprimer les corps qui vous ont fait ? Le geste est beau. Je ne le serai plus pour le relire.']],
+        fiche: 'Réforme de rupture : une presse enthousiaste, une administration en colère.' },
+      B: { t: 'Je garde les corps, j\'impose la mobilité et la transparence totale du pantouflage.', v: { c: 4, m: -1, j: -1, l: 1 },
+        rep: [['directeur', 'Mobilité, transparence : ce n\'est pas une révolution. Pour nous, c\'est une victoire par défaut.']],
+        fiche: 'Réforme mesurée : l\'administration reste de votre côté, l\'opinion y voit peu de changement.' },
+      C: { t: 'Je promets aux directeurs d\'administration centrale : « Aucun poste supprimé ».', v: { c: 1, p: 10, m: -2, t: -1, j: 2 },
+        rep: [['directeur', 'Aucun poste supprimé ? Je transmettrai à mes collègues. Ils sauront s\'en souvenir.']],
+        fiche: 'Promesse de stabilité : l\'appareil se calme, la presse hausse un sourcil.' },
+    } });
+
+  S('spread', {
+    marge: 'Le « spread » est l\'écart entre le taux auquel la France emprunte à dix ans et celui de l\'Allemagne. Un point de plus, c\'est des milliards de charge d\'intérêts sur la dette. La BCE peut racheter des titres (instrument TPI) mais ne remplace pas la crédibilité du programme.',
+    opts: {
+      A: { t: 'Je promets un choc d\'économies immédiat pour rassurer les marchés avant le premier tour.', v: { e: -5, c: 3, m: -3, j: 5, l: -4 },
+        rep: [['diplo', 'Un choc de rigueur à trois semaines du scrutin ? Les marchés applaudissent, les électeurs prennent note.']],
+        fiche: 'Rigueur affichée : les marchés se calment, la base s\'inquiète.' },
+      B: { t: 'Je publie un calendrier de réduction du déficit chiffré par un institut indépendant.', v: { c: 5, m: -1, j: -2, l: 1 },
+        rep: [['diplo', 'Un institut indépendant, un calendrier public : voilà qui rassure sans effrayer. À Bruxelles aussi, on notera.']],
+        fiche: 'Transparence budgétaire : le spread se stabilise, vous gagnez en sérieux.' },
+      C: { t: 'Je dénonce « la spéculation » et les agences : une posture, pas un programme.', v: { m: 5, c: -4, j: 1, p: 5, l: 2 },
+        rep: [['diplo', 'Accuser les agences, c\'est un classique. Cela rassure vos meetings et alarme vos créanciers.']],
+        fiche: 'Posture anti-marchés : un moment fort, un coût en crédibilité.' },
+    } });
+})(globalThis.AK);
+
+
+/* ===== game/seq-camp-leon.js ===== */
+// ============================================================================
+//  V13 — LÉON MARTEAU (Gauche Debout) : six séquences exclusives (partage des richesses, écologie, services publics, patronat)
+//  ch.2 : isf (économiste, Maison de la gauche) · salaires (cheminot, Bourse du travail)
+//  ch.3 : capitaux (économiste) · ecologie (militante, Maison de la gauche)
+//  ch.4 : greve_generale (cheminot) · services (militante)
+//  Lettres : A = rupture · B = ligne institutionnelle · C = ligne tactique.
+// ============================================================================
+(function (AK) {
+  const S = AK.sequence;
+
+  S('isf', {
+    marge: 'L\'ISF a été supprimé en 2018 et remplacé par l\'impôt sur la fortune immobilière (IFI). En 2012, le Conseil constitutionnel a censuré la taxe à 75 % (décision 2012-662 DC) comme confiscatoire. Les « exit taxes » visent à freiner l\'expatriation fiscale.',
+    opts: {
+      A: { t: 'Je rétablis l\'ISF et taxe à 90 % au-delà de dix millions : les riches paieront la transition.', v: { e: 8, r: 4, c: -6, m: 4, j: 5, l: 6 },
+        rep: [['economiste', 'À 90 %, le Conseil constitutionnel dira « confiscatoire » avant que le Parlement ne vote. Ce sera un beau geste, et un bel échec.']],
+        fiche: 'Taxation extrême : la base exulte, le Conseil constitutionnel et les marchés grincent.' },
+      B: { t: 'Un ISF rénové : barème progressif, exit tax renforcée, registre européen des fortunes.', v: { e: 4, c: 3, m: -1, j: -1, l: -2, s: -2 },
+        rep: [['economiste', 'Un barème progressif, un registre européen : c\'est juridiquement tenable et politiquement habile. Peu spectaculaire, mais ça rapporte.']],
+        fiche: 'ISF rénové : sérieux, crédible, peu enthousiasmant pour la base.' },
+      C: { t: 'Un impôt plancher de 25 % sur les milliardaires, comme le proposent des économistes.', v: { e: 5, c: 2, m: 3, l: 1 },
+        rep: [['economiste', 'Un plancher, c\'est ce qu\'on appelle une règle simple. Les milliardaires la détesteront… et paieront.']],
+        fiche: 'Impôt plancher : une règle claire, un message fort, peu de risque.' },
+    } });
+
+  S('salaires', {
+    marge: 'Le SMIC est revalorisé automatiquement avec l\'inflation. La négociation des salaires se fait par branche ; la « prime de partage de la valeur » (2023) incite les entreprises à redistribuer une partie de leurs profits sans cotisations.',
+    opts: {
+      A: { t: 'Un SMIC à 2 000 € net et un écart de un à vingt dans les grandes entreprises.', v: { e: 7, r: 4, c: -5, m: 4, j: 4, l: 5 },
+        rep: [['cheminot', 'Deux mille euros ! Les petites entreprises vont hurler, mes collègues vont chanter.']],
+        fiche: 'Hausse massive : la base est conquise, le patronat mobilise.' },
+      B: { t: 'Une conférence sociale annuelle, un SMIC indexé et un écart plafonné dans les entreprises aidées.', v: { e: 3, c: 3, m: -1, j: -2, l: -2 },
+        rep: [['cheminot', 'Une conférence sociale ? On en a fait vingt. Mais si cette fois les décisions suivent, je signe.']],
+        fiche: 'Dialogue social : des engagements chiffrés, peu d\'effets d\'annonce.' },
+      C: { t: 'Une prime de partage de la valeur obligatoire dans les entreprises de plus de cinquante salariés.', v: { e: 2, c: 2, m: 2, l: 1 },
+        rep: [['cheminot', 'Obligatoire, c\'est bien. Sans contrôle, c\'est du vent.']],
+        fiche: 'Prime obligatoire : mesure concrète, faible risque.' },
+    } });
+
+  S('capitaux', {
+    marge: 'La libre circulation des capitaux est garantie par l\'article 63 du traité sur le fonctionnement de l\'UE. Un État peut la restreindre temporairement en cas de crise grave (Chypre en 2013), mais cela signe un aveu de panique et une chute de la confiance.',
+    opts: {
+      A: { t: 'Contrôle des capitaux et nationalisation des banques en cas de panique.', v: { e: 6, r: 7, c: -7, m: 4, j: 5, l: 5, s: 2 },
+        rep: [['economiste', 'Le contrôle des capitaux, c\'est possible. Mais votre premier jour à Matignon sera aussi votre dernier jour de crédit.']],
+        fiche: 'Plan de rupture : la base applaudit, les marchés attaquent.' },
+      B: { t: 'Un fonds de stabilisation européen et un accord avec la BCE pour sécuriser la transition.', v: { c: 5, s: -3, m: -1, j: -3, l: -4 },
+        rep: [['economiste', 'La BCE ne vous ouvrira pas ses portes sans conditions. Mais c\'est le seul pare-feu sérieux.']],
+        fiche: 'Pare-feu européen : crédible, mais la gauche radicale n\'y voit pas son compte.' },
+      C: { t: 'Je rassure : « pas un euro ne sera bloqué » — tout en préparant un plan B discret.', v: { c: 1, m: 2 },
+        si: { k: 'cred', min: 45, ok: { v: { c: 2, m: 2 } }, ko: { v: { c: -4, m: -3 } },
+          okSay: 'Les marchés vous croient. La presse économique salue une « maturité nouvelle ».',
+          koSay: 'Le plan B fuite dans la presse : « Marteau prépare le contrôle des capitaux ». Démenti piteux.' },
+        rep: [['economiste', 'Un plan B secret n\'existe pas : il y a des fuites ou il y a un plan A.']],
+        fiche: 'Double jeu : possible si vous êtes assez crédible, désastreux sinon.' },
+    } });
+
+  S('ecologie', {
+    marge: 'La désobéissance civile non violente suppose d\'assumer publiquement l\'infraction et d\'en accepter les conséquences. En 2021, dans l\'affaire de Grande-Synthe, le Conseil d\'État a enjoint à l\'État de respecter ses engagements climatiques : la voie judiciaire existe.',
+    opts: {
+      A: { t: 'Je soutiens le blocage du chantier : la désobéissance est parfois un devoir.', v: { e: 4, r: 5, m: 6, j: 4, c: -4, l: 6, p: -10 },
+        rep: [['militante', 'Vous venez sur le chantier, avec les bâches et la presse ? Les jeunes seront là en cinq minutes.']],
+        fiche: 'Désobéissance assumée : mobilisation de la jeunesse, rejet des élus.' },
+      B: { t: 'Je soutiens la marche, je condamne le blocage et je saisis le juge administratif.', v: { c: 4, m: 1, j: -2, l: -3, p: 10 },
+        rep: [['militante', 'Le juge administratif, c\'est lent. Mais c\'est aussi la seule voie qui a fait plier l\'État.']],
+        fiche: 'Voie judiciaire : crédible et appréciée des élus, tiède pour les jeunes.' },
+      C: { t: 'Je viens sur place, je ne prends pas la parole : je laisse parler les jeunes.', v: { m: 3, j: 1, l: 2, p: 5 },
+        rep: [['militante', 'Écouter plutôt que parler : c\'est rare chez un candidat.']],
+        fiche: 'Présence silencieuse : une image forte, une position floue.' },
+    } });
+
+  S('greve_generale', {
+    marge: 'Dans les services publics, un préavis de grève doit être déposé cinq jours à l\'avance. « La grève générale » n\'a pas de statut juridique propre : c\'est un mouvement de grèves coordonnées. Le service minimum garantit certains transports aux heures de pointe.',
+    opts: {
+      A: { t: 'Je me joins au piquet et j\'appelle à la grève générale : le meeting sera sur la place de la gare.', v: { r: 6, e: 3, m: 6, j: 5, c: -5, l: 6, p: -10 },
+        rep: [['cheminot', 'La place de la gare, un jeudi, avec trois mille personnes. Les voyageurs bloqués apprécieront moins.']],
+        fiche: 'Fusion avec la grève : la base vibre, les électeurs bloqués se détournent.' },
+      B: { t: 'J\'appelle au dialogue : le préavis est un droit, mais le meeting ne doit pas en être l\'otage.', v: { c: 4, m: -2, j: -3, l: -4, p: 10 },
+        rep: [['cheminot', 'Le droit de grève n\'est pas contre vous, camarade. Mais si vous ne soutenez pas notre lutte, qui le fera ?']],
+        fiche: 'Appel au dialogue : image responsable, base déçue.' },
+      C: { t: 'Je délocalise le meeting : trois salles reliées en direct, billets échangeables.', v: { m: 3, c: 1, t: -3, j: -1, l: 1 },
+        rep: [['cheminot', 'Trois salles, trois écrans : vous avez trouvé la solution. Mais tout le monde ne sera pas à la gare.']],
+        fiche: 'Meeting en réseau : solution logistique, coût élevé, effet médiatique modéré.' },
+    } });
+
+  S('services', {
+    marge: 'Le budget de l\'hôpital public dépend de l\'ONDAM, l\'objectif national de dépenses d\'assurance maladie voté chaque année par le Parlement. Les services publics (santé, école, justice) pèsent plus de la moitié des dépenses publiques hors transferts.',
+    opts: {
+      A: { t: 'Cent mille embauches à l\'hôpital et à l\'école, financées par la fiscalité du capital.', v: { e: 7, c: -4, t: -2, m: 3, j: 3, l: 5, p: 10 },
+        rep: [['militante', 'Cent mille ! Les infirmières ne vous croiront que sur contrat signé, mais elles écouteront.']],
+        fiche: 'Plan massif d\'embauches : adhésion sociale, trou dans les comptes.' },
+      B: { t: 'Une loi de programmation de quarante mille postes, avec son financement chiffré.', v: { e: 3, c: 4, m: -1, j: -2, l: -2, t: -1 },
+        rep: [['militante', 'Quarante mille, c\'est réaliste. Chiffré et voté, c\'est déjà beaucoup mieux que d\'habitude.']],
+        fiche: 'Loi de programmation : crédible, moins mobilisateur.' },
+      C: { t: 'J\'annonce sur un plateau : « un hôpital rouvert par département ».', v: { m: 4, c: -2, j: 1, l: 2, p: 10 },
+        rep: [['militante', 'Un hôpital par département ? Les maires vont téléphoner dès demain.']],
+        fiche: 'Annonce spectaculaire : un coup médiatique, un chiffrage fragile.' },
+    } });
+})(globalThis.AK);
+
+
+/* ===== game/seq-camp-marion.js ===== */
+// ============================================================================
+//  V13 — MARION CASTELLE (Ralliement Souverain) : six séquences exclusives (sécurité, souveraineté, fracture territoriale, médias)
+//  ch.2 : police (déléguée syndicale, permanence) · polemiste (polémiste, Assemblée)
+//  ch.3 : plafond_verre (polémiste) · enclaves (maire rural, permanence)
+//  ch.4 : metropoles (maire rural) · fait_divers (commissaire)
+//  Lettres : A = rupture · B = ligne institutionnelle · C = ligne tactique.
+// ============================================================================
+(function (AK) {
+  const S = AK.sequence;
+
+  S('police', {
+    marge: 'Depuis 2017, l\'article L435-1 du Code de la sécurité intérieure encadre l\'usage des armes par les forces de l\'ordre (absolue nécessité, proportionnalité). Les policiers n\'ont pas le droit de grève : leurs syndicats pèsent dans les élections professionnelles et les médias.',
+    opts: {
+      A: { t: 'Je promets la présomption de légitime défense pour tous les policiers.', v: { o: 8, s: 2, c: -4, m: 4, j: 4, l: 5 },
+        rep: [['policiere', 'Voilà un langage qu\'on entend peu. Mais les juges et la Cour européenne vous le feront payer, madame.']],
+        fiche: 'Légitime défense élargie : ovation des syndicats, mais risque juridique et rejet accru.' },
+      B: { t: 'Dix mille policiers de plus, des équipements, une formation renforcée : tout financé.', v: { o: 3, c: 4, m: -1, t: -2, l: -2, j: -2 },
+        rep: [['policiere', 'Des moyens, enfin : nous avons trente mille heures supplémentaires impayées. La loi, c\'est bien ; les renforts, c\'est mieux.']],
+        fiche: 'Moyens et formation : sérieux et crédible, mais loin des mots que la base attendait.' },
+      C: { t: 'Je pose en photo avec le syndicat devant le commissariat et je laisse le débat courir.', v: { m: 5, c: -2, j: 2, l: 1, p: 5 },
+        rep: [['policiere', 'Une photo ? Nous préférons les engagements, mais la presse ne veut que la photo.']],
+        fiche: 'Photo de famille : bonne image, aucun engagement : les syndicats le noteront.' },
+    } });
+
+  S('polemiste', {
+    marge: 'Pendant la campagne, l\'Arcom veille à l\'équité du temps de parole des candidats (règle d\'équité, puis d\'égalité). Elle ne régule pas le ton des chroniqueurs : un plateau de débat peut être très favorable ou très hostile sans enfreindre la règle.',
+    opts: {
+      A: { t: 'Je réponds sur le même ton : cinq minutes de ligne dure, avec ses propres phrases contre lui.', v: { m: 7, j: 4, c: -4, l: 4, o: 3 },
+        rep: [['polemiste', 'Excellent. Mes audiences vous remercient, madame. Mon patron aussi.']],
+        fiche: 'Duel de ton : beaucoup d\'audience, une image figée de candidate clivante.' },
+      B: { t: 'Je ramène le débat sur trois mesures chiffrées et je refuse les petites phrases.', v: { m: -1, c: 5, j: -3, l: -3 },
+        rep: [['polemiste', 'Des chiffres sur un plateau ? Vous êtes courageuse. Ou suicidaire.']],
+        fiche: 'Retour au fond : vous gagnez en sérieux, vous perdez en spectacle.' },
+      C: { t: 'Je le laisse parler, puis je cite un seul chiffre qui le contredit.', v: { m: 3, c: 2 },
+        si: { k: 'cred', min: 45, ok: { v: { m: 3, j: -1 } }, ko: { v: { c: -2, m: -2 } },
+          okSay: 'Le chiffre fait mouche : l\'extrait tourne toute la nuit sur les réseaux.',
+          koSay: 'Le polémiste dégaine un chiffre plus récent : l\'extrait tourne… contre vous.' },
+        rep: [['polemiste', 'Un chiffre ? Dangereux. Mes recherchistes ont de la mémoire.']],
+        fiche: 'Contre-attaque chiffrée : brillante si la candidate est crédible, ridicule sinon.' },
+    } });
+
+  S('plafond_verre', {
+    marge: 'Le « plafond de verre » désigne le refus durable d\'une partie de l\'électorat de voter pour un candidat, même au second tour. Il se mesure par le rejet. Le vocabulaire, les alliés et les silences comptent autant que le programme.',
+    opts: {
+      A: { t: 'Je garde mon vocabulaire et mes mots : les électeurs me prennent comme je suis.', v: { l: 5, j: 4, m: 3, c: -3, r: 3 },
+        rep: [['polemiste', 'Vous restez fidèle à vous-même. Les fidèles vous adorent, les autres ont leur réponse.']],
+        fiche: 'Fidélité absolue : la base est soudée, le plafond de verre tient.' },
+      B: { t: 'Je change de vocabulaire, je m\'entoure d\'élus de droite classique et d\'un économiste connu.', v: { j: -6, c: 4, l: -5, m: 1, o: -2 },
+        rep: [['polemiste', 'Dédiabolisation, version deux. Ça marche… jusqu\'au premier tweet de vos militants.']],
+        fiche: 'Dédiabolisation : le rejet recule, la base se sent trahie.' },
+      C: { t: 'Double discours : mesurée à la télévision, ferme dans les meetings.', v: { m: 2, j: -2, l: 1, c: -2 },
+        si: { k: 'cred', min: 50, ok: { v: { j: -2, p: 10 } }, ko: { v: { c: -3, m: -2 } },
+          okSay: 'Les deux publics y trouvent leur compte. Pour l\'instant.',
+          koSay: 'Un journaliste confronte vos deux discours à l\'antenne : « Alors, laquelle est la vraie ? »' },
+        rep: [['polemiste', 'Un discours pour chaque public ? C\'est de l\'équilibrisme. Il ne faut pas tomber.']],
+        fiche: 'Double langage : efficace tant que les caméras ne se croisent pas.' },
+    } });
+
+  S('enclaves', {
+    marge: 'Un « désert médical » est un territoire où l\'accès aux soins est insuffisant. L\'État verse aux communes une dotation globale de fonctionnement (DGF) ; les fermetures de classes, de maternités ou de sous-préfectures nourrissent le sentiment d\'abandon des zones enclavées.',
+    opts: {
+      A: { t: 'Je promets : plus aucune maternité, classe ou gare fermée sans l\'accord du maire.', v: { e: 5, s: 2, t: -3, c: -3, m: 2, l: 4, p: 15 },
+        rep: [['mairerural', 'Un droit de veto du maire ! Les ministres vont hurler, mais moi, je signe des deux mains.']],
+        fiche: 'Veto des maires : promesse tonitruante, coût et effet d\'annonce.' },
+      B: { t: 'Un pacte pour la ruralité : médecins salariés en zones sous-denses, trois ans d\'exercice obligatoires.', v: { e: 3, c: 3, t: -1, p: 20, j: -1, l: -1 },
+        rep: [['mairerural', 'Trois ans minimum, des médecins salariés… Les médecins vont hurler, mes administrés vont applaudir.']],
+        fiche: 'Pacte rural : des parrainages, des élus rassurés, une profession mécontente.' },
+      C: { t: 'Je tiens mon meeting dans le village : quarante-cinq minutes de route, une salle des fêtes pleine.', v: { m: 4, p: 10, t: -1, l: 2 },
+        rep: [['mairerural', 'Une salle pleine, une télé régionale, des bravos : on parlera de vous jusqu\'à la Saint-Jean.']],
+        fiche: 'Meeting hors des villes : de l\'affection, des parrainages, peu de chiffres.' },
+    } });
+
+  S('metropoles', {
+    marge: 'Les zones à faibles émissions (ZFE) restreignent la circulation des véhicules polluants dans les grandes agglomérations. Elles sont devenues un symbole de la fracture entre métropoles et périphéries : ceux qui vivent loin ont besoin de la voiture.',
+    opts: {
+      A: { t: 'J\'abolis les ZFE et je baisse la taxe carburant : la voiture n\'est pas un luxe.', v: { e: 3, o: 3, c: -3, m: 4, l: 5, j: 3, t: -2 },
+        rep: [['mairerural', 'Enfin quelqu\'un qui nous comprend ! Les métropoles ne comptent pas nos kilomètres.']],
+        fiche: 'Abolition des ZFE : la périphérie applaudit, l\'écologie hurle, le déficit se creuse.' },
+      B: { t: 'Une prime de déplacement, des ZFE assouplies et des transports régionaux cofinancés.', v: { e: 3, c: 3, t: -2, j: -2, l: -2, p: 15 },
+        rep: [['mairerural', 'Une prime, c\'est utile. Mais sans bus dans les villages, cela reste un chèque sur un trottoir désert.']],
+        fiche: 'Compromis territorial : équilibre entre écologie et pouvoir d\'achat, peu d\'enthousiasme.' },
+      C: { t: 'Je promets à chaque métropole un référendum local : à elles de choisir.', v: { m: 3, c: -1, p: 10 },
+        rep: [['mairerural', 'Un référendum ? Les métropoles voteront pour elles, et moi je resterai avec mes routes.']],
+        fiche: 'Référendum local : un geste de démocratie, une fausse bonne idée pour les périphéries.' },
+    } });
+
+  S('fait_divers', {
+    marge: 'Un fait divers ultrasensible oppose deux principes : le droit à l\'information et la présomption d\'innocence (art. 9-1 du Code civil), avec le secret de l\'enquête (art. 11 du Code de procédure pénale). Une chaîne d\'info en continu a besoin de réactions en heures, pas de vérité en semaines.',
+    opts: {
+      A: { t: 'Je réclame une réponse pénale immédiate et je dénonce « le laxisme de la justice ».', v: { o: 6, m: 7, j: 5, c: -6, l: 5, s: 1 },
+        rep: [['commissaire', 'Madame la candidate, nous n\'avons pas encore d\'identité formelle. Les juges apprécieront votre analyse.']],
+        fiche: 'Surenchère immédiate : une audience record, un rejet fort, des risques judiciaires.' },
+      B: { t: 'Je dis ma compassion, je rappelle la présomption d\'innocence et j\'attends l\'enquête.', v: { c: 5, m: -2, j: -3, l: -4, o: -2 },
+        rep: [['commissaire', 'Sage, madame. Beaucoup de candidats se sont brûlés sur un fait divers qu\'ils ne connaissaient pas.']],
+        fiche: 'Retenue : vous gagnez en stature, la base voit un renoncement.' },
+      C: { t: 'Je demande au ministre un point presse : « Que sait-on ? Que fait-on ? ».', v: { m: 2, c: 1 },
+        si: { k: 'media', min: 50, ok: { v: { m: 2, c: 1 } }, ko: { v: { m: -1 } },
+          okSay: 'Votre question à la tribune est reprise en boucle : vous avez cadré le débat.',
+          koSay: 'Peu de chaînes relaient votre demande, noyée sous le flot des images.' },
+        rep: [['commissaire', 'Un point presse du ministre ? Il y viendra, mais pas avant la mise en examen.']],
+        fiche: 'Question posée : une voix de bon sens, mais discrète quand le feu est médiatique.' },
     } });
 })(globalThis.AK);
 
@@ -7307,6 +7641,32 @@ npc4('garde_republicain', 'Un garde républicain', '#d8e0f0', { skin: '#d6a888',
   outfit: { jacket: '#16286a', shirt: '#16286a', trousers: '#f4f4f8', shoes: '#0a0a0a', accent: '#d4a017' }, cap: '#d4a017' });
 
 
+/* ===== game/characters/personnages-v6.js ===== */
+// V13 — personnages exclusifs à chaque candidat (tous fictifs) : diplomate, PDG, conseiller, directeur ; policière, polémiste, maire rural ; cheminot, économiste, militante.
+const K6 = 'politique';
+const npc6 = (id, name, color, look) => AK.character({ id, name, color, look: Object.assign({ kind: K6 }, look) });
+npc6('diplo', 'Sir Albert Kessel, diplomate européen', '#c8d8ff', { skin: '#f0d0b4', hair: '#b0b0b8', gray: true, hairStyle: 'swept', glasses: '#2a2a35', build: 'slim', height: 1.0,
+  outfit: { jacket: '#22304a', shirt: '#f4f6fb', tie: '#1c4a9a', trousers: '#22304a', shoes: '#101010', pocket: '#ffffff' } });
+npc6('pdg', 'Patrick Valmont, PDG', '#ffe0a0', { skin: '#ecc4a0', hair: '#4a3a30', hairStyle: 'short', build: 'stocky', height: 1.0,
+  outfit: { jacket: '#16161c', shirt: '#f0f0f4', tie: '#a02030', trousers: '#16161c', shoes: '#0c0c10', accent: '#c8a03a' } });
+npc6('conseiller', 'Jean-Marc Ostier, conseiller élyséen', '#e0e0d0', { skin: '#e8c8a8', hair: '#8a8a90', gray: true, hairStyle: 'bald', glasses: '#3a3a44', build: 'normal', height: 0.95,
+  outfit: { jacket: '#2a2a30', shirt: '#e8e8ee', tie: '#5a2a3a', trousers: '#2a2a30', shoes: '#14100e' } });
+npc6('directeur', 'Claire Maurel, directrice du Trésor', '#d8e8d0', { female: true, skin: '#eecaa8', hair: '#6a5a4a', hairStyle: 'bun', glasses: '#3a3a44', build: 'slim', height: 0.95, lipstick: '#8a2a3a',
+  outfit: { jacket: '#3a4a3e', shirt: '#f2f2f6', skirt: '#3a4a3e', shoes: '#14141a', accent: '#c8a03a' } });
+npc6('policiere', 'Sandrine Vidal, syndicat de police', '#a8c0e8', { female: true, skin: '#e8c4a4', hair: '#3a2a22', hairStyle: 'bun', build: 'normal', height: 0.94,
+  outfit: { jacket: '#1a2a4a', shirt: '#c8d4e8', trousers: '#1a2a4a', shoes: '#101018', accent: '#2a5ac8' } });
+npc6('polemiste', 'Rémi Dasque, polémiste', '#ffd0b0', { skin: '#efc8a8', hair: '#2a2420', hairStyle: 'swept', beard: 'stubble', beardColor: '#3a3028', build: 'normal', height: 0.98,
+  outfit: { jacket: '#4a3a30', shirt: '#e8e0d4', trousers: '#2a2a30', shoes: '#2a1a10', pocket: '#e8c15a' } });
+npc6('mairerural', 'Gilbert Cazal, maire rural', '#d0c0a0', { skin: '#dcb090', hair: '#9a8a7a', gray: true, hairStyle: 'short', mustache: '#8a7a6a', cap: '#4a5a3a', build: 'stocky', height: 0.92,
+  outfit: { jacket: '#5a5a3a', shirt: '#d8d0b8', trousers: '#3a3a2a', shoes: '#2a1a0a', scarf: '#8a2a2a' } });
+npc6('cheminot', 'Dédé Rousset, cheminot syndiqué', '#ffb8a0', { skin: '#d8a888', hair: '#2a2018', hairStyle: 'short', mustache: '#2a2018', build: 'stocky', height: 0.95, hivis: true,
+  outfit: { jacket: '#c8501a', shirt: '#e8e8ec', trousers: '#2a2a35', shoes: '#2a1a10' } });
+npc6('economiste', 'Prof. Hélène Berthier, économiste atterrée', '#e8d0f0', { female: true, skin: '#eec6aa', hair: '#b8b8c0', gray: true, hairStyle: 'bob', glasses: '#8a2a5a', build: 'slim', height: 0.94, lipstick: '#8a2a5a',
+  outfit: { jacket: '#5a2a6a', shirt: '#f4f0f6', trousers: '#2a2a35', shoes: '#101010', accent: '#e8c15a' } });
+npc6('militante', 'Zoé Lanvin, militante associative', '#c8f0b8', { female: true, skin: '#f0cdb0', hair: '#7a3a2a', hairStyle: 'curly', build: 'slim', height: 0.92,
+  outfit: { jacket: '#3a7a4a', shirt: '#f4f4ea', trousers: '#4a4a3a', shoes: '#e8e8e0', accent: '#e8c15a' } });
+
+
 /* ===== game/items/items-v3.js ===== */
 // ============================================================================
 //  V3 — objets d'inventaire des énigmes (voir puzzles.js). Les interactions « Utiliser X avec Y » sont décrites par les scènes (cibles).
@@ -7411,9 +7771,9 @@ AK.item({ id: 'rapport_cdc', name: 'rapport de la Cour des comptes', icon: 'book
       D('barrage', 'Marseille : le barrage routier.', ['ch_2'], 'Marseille', 'Décembre 2026'),
       D('cour_matignon', 'Matignon : rendez‑vous avec le Premier ministre.', ['ch_2'], 'Hôtel de Matignon', 'Rue de Varenne · Décembre 2026'),
       D('assemblee', 'L\'Assemblée nationale (salle des Quatre‑Colonnes, hémicycle).', ['ch_2'], 'Assemblée nationale', 'Palais Bourbon'),
-      D('permanence', 'La permanence en région.', ['hero:marion', 'ch_3'], 'Permanence', 'Une sous‑préfecture'),
+      D('permanence', 'La permanence en région.', ['hero:marion', 'ch_2'], 'Permanence', 'Une sous‑préfecture'),
       D('bourse_travail', 'La Bourse du travail.', ['hero:leon', 'ch_2'], 'Bourse du travail', 'Paris · Décembre 2026'),
-      D('maison_gauche', 'La Maison de la gauche.', ['hero:leon', 'ch_3'], 'Maison de la gauche', 'Paris · Février 2027'),
+      D('maison_gauche', 'La Maison de la gauche.', ['hero:leon', 'ch_2'], 'Maison de la gauche', 'Paris · Décembre 2026'),
       D('bercy', 'Bercy : le ministère de l\'Économie.', ['hero:bernard', 'ch_2'], 'Bercy', 'Ministère de l\'Économie'),
       D('mairie', 'La mairie : réunion des maires.', ['hero:bernard', 'ch_3'], 'Hôtel de ville', 'Association des maires'),
       D('salon', 'Le Salon de l\'agriculture.', ['ch_3'], 'Salon de l\'agriculture', 'Porte de Versailles · Février 2027'),
@@ -7657,6 +8017,78 @@ AK.item({ id: 'rapport_cdc', name: 'rapport de la Cour des comptes', icon: 'book
 })();
 
 
+/* ===== game/dialogues/heros2.js ===== */
+// V13 — PNJ exclusifs à chaque candidat : chacun ses interlocuteurs, ses questions, ses dilemmes.
+(function () {
+  // ===================== Bernard Lamy : Bercy et la mairie =====================
+  AK.parler('diplo', {
+    seqs: [
+      { id: 'eurogroupe', ch: 2, prompt: [['diplo', 'Monsieur Lamy. La Commission examine votre trajectoire budgétaire. Le Conseil se réunit lundi : à Bruxelles, une promesse sans date ne vaut rien.'], ['diplo', 'Procédure de déficit excessif, étalement, clause dérogatoire : quelle position défendez-vous ?']] },
+      { id: 'spread', ch: 4, prompt: [['diplo', 'Le taux à dix ans grimpe : le spread avec l\'Allemagne a pris quinze points de base en huit jours. Les marchés guettent votre premier tour.'], ['diplo', 'Que dites-vous aux investisseurs ?']] }],
+    rien: [['diplo', 'À Bruxelles, on aime les gens sérieux. Ils sont rares, et c\'est toute leur valeur.']],
+    info: [{ text: 'Qu\'est-ce que le « spread » ?', reply: [['diplo', 'L\'écart entre ce que la France paie pour emprunter et ce que paie l\'Allemagne. Quand il grimpe, c\'est la confiance qui baisse.']] },
+      { text: 'La Commission peut-elle sanctionner la France ?', reply: [['diplo', 'En théorie, des amendes. En pratique, jamais appliquées : on négocie, on étale, on s\'accorde. C\'est ça, l\'Europe.']] }] });
+  AK.parler('pdg', {
+    seqs: [{ id: 'cac40', ch: 2, prompt: [['pdg', 'Monsieur Lamy. Quelques-uns de mes collègues du CAC 40 aimeraient dîner avec vous. Rien d\'officiel : des assiettes, des idées, des chiffres.'], ['pdg', 'Nous aimons les candidats qui savent compter. Vous venez ?']] }],
+    rien: [['pdg', 'Les entreprises ne financent pas les campagnes : la loi l\'interdit. Mais elles écoutent beaucoup.']],
+    info: [{ text: 'Les entreprises peuvent-elles financer ma campagne ?', reply: [['pdg', 'Non, depuis 1995. Les dirigeants peuvent donner à titre personnel, dans la limite du plafond. Chacun en tire ses conclusions.']] }] });
+  AK.parler('conseiller', {
+    seqs: [{ id: 'elysee', ch: 3, prompt: [['conseiller', 'Bernard, soyons francs. Le Président ne se représente pas, mais il aimerait un successeur. Il vous apprécie. Cela peut être un atout… ou un boulet.'], ['conseiller', 'Il vous propose son soutien. Qu\'en pensez-vous ?']] }],
+    rien: [['conseiller', 'À l\'Élysée, on dit « la maison ». On n\'y est jamais vraiment sorti.']],
+    info: [{ text: 'Le Président peut-il se représenter ?', reply: [['conseiller', 'Non : deux mandats consécutifs au maximum, depuis la révision de 2008. Il est libre, donc dangereux.']] }] });
+  AK.parler('directeur', {
+    seqs: [
+      { id: 'reformes', ch: 3, prompt: [['directeur', 'Directrice du Trésor. Nous avons chiffré vos réformes : retraites, assurance chômage, statut des agents. À quel rythme voulez-vous aller ?']] },
+      { id: 'haute_fonction', ch: 4, prompt: [['directeur', 'On murmure que vous voulez réformer la haute fonction publique. Au Trésor, nous avons des sentiments partagés.'], ['directeur', 'Vous êtes l\'un des nôtres, monsieur Lamy. Pourtant, que ferez-vous des grands corps ?']] }],
+    rien: [['directeur', 'Nous exécutons. Nous conseillons. Nous survivons aux ministres.']],
+    info: [{ text: 'Qu\'est-ce que le pantouflage ?', reply: [['directeur', 'Quitter la haute fonction publique pour le privé. Légal, contrôlé, mais toujours soupçonné.']] }] });
+
+  // ===================== Marion Castelle : permanence et Assemblée =====================
+  AK.parler('policiere', {
+    seqs: [{ id: 'police', ch: 2, prompt: [['policiere', 'Sandrine Vidal, syndicat de police. Trente mille heures supplémentaires impayées, des commissariats à bout de souffle, et une loi sur la légitime défense que personne n\'ose toucher.'], ['policiere', 'Qu\'allez-vous nous proposer, madame Castelle ?']] }],
+    rien: [['policiere', 'On est dans la rue, madame. Pas dans les sondages.']],
+    info: [{ text: 'Les policiers ont-ils le droit de grève ?', reply: [['policiere', 'Non. Nos syndicats manifestent, négocient, bloquent parfois les commissariats avec les moyens du bord. Mais grève, jamais.']] }] });
+  AK.parler('polemiste', {
+    seqs: [
+      { id: 'polemiste', ch: 2, prompt: [['polemiste', 'Madame Castelle ! Rémi Dasque. Mon émission, un million de spectateurs : vous face à moi, vingt minutes, sans filet.'], ['polemiste', 'Vos adversaires m\'attendent au tournant. Vous aussi, je crois.']] },
+      { id: 'plafond_verre', ch: 3, prompt: [['polemiste', 'Les sondages sont limpides : vous gagnez le premier tour, vous perdez le second. Le fameux plafond de verre, madame.'], ['polemiste', 'Alors : on casse le plafond, ou on le décore ?']] }],
+    rien: [['polemiste', 'Je ne suis pas un journaliste, je suis un amplificateur. Branchez-vous, ça passe plus fort.']],
+    info: [{ text: 'Les plateaux de débat sont-ils régulés ?', reply: [['polemiste', 'L\'Arcom surveille le temps de parole des candidats. Moi, je ne suis pas candidat : je parle autant que je veux.']] }] });
+  AK.parler('mairerural', {
+    seqs: [
+      { id: 'enclaves', ch: 3, prompt: [['mairerural', 'Gilbert Cazal, maire de quatre cents âmes. Plus de médecin, plus de poste, une classe fermée à la rentrée. On meurt à petit feu, madame.'], ['mairerural', 'Qu\'avez-vous à proposer à des gens que Paris ne regarde plus ?']] },
+      { id: 'metropoles', ch: 4, prompt: [['mairerural', 'À la ville, on interdit les vieux diesels. Chez nous, il n\'y a pas de bus. La voiture, c\'est le pain.'], ['mairerural', 'Alors, les zones à faibles émissions, vous en pensez quoi ?']] }],
+    rien: [['mairerural', 'Revenez quand vous aurez des solutions. Les promesses, j\'en ai trois tiroirs.']],
+    info: [{ text: 'Qu\'est-ce que la DGF ?', reply: [['mairerural', 'La dotation globale de fonctionnement : l\'argent que l\'État verse aux communes. Elle baisse quand l\'État a besoin d\'économies.']] }] });
+  AK.parler('commissaire', {
+    seqs: [{ id: 'fait_divers', ch: 4, prompt: [['commissaire', 'Un meurtre à Lyon ce matin. Une jeune femme, un suspect connu des services. Les chaînes d\'info tournent en boucle depuis six heures.'], ['commissaire', 'Je ne peux rien dire de l\'enquête. Vous, madame, vous devez parler. Les caméras attendent.']] }],
+    rien: [['commissaire', 'Pour un bilan de la délinquance, il me faut une demande officielle, signée et tamponnée. Pas un appel, pas un SMS.', '!seq_rapport_police'],
+      ['commissaire', 'Le rapport est entre vos mains. Faites‑en bon usage : la sécurité, c\'est d\'abord des chiffres et des policiers.', 'seq_rapport_police']],
+    info: [{ text: 'Les chiffres de la délinquance sont‑ils fiables ?', reply: [['commissaire', 'Les chiffres, oui. L\'interprétation, c\'est la politique. Un cambriolage de plus dans une commune, ce n\'est pas une vague.']] },
+      { text: 'Qu\'est-ce que le secret de l\'enquête ?', reply: [['commissaire', 'Tout ce que je sais, je ne peux pas le dire. Tout ce qu\'on dit à la télé, je ne peux pas le démentir. Le pire des deux mondes.']] }] });
+
+  // ===================== Léon Marteau : Bourse du travail et Maison de la gauche =====================
+  AK.parler('cheminot', {
+    seqs: [
+      { id: 'salaires', ch: 2, prompt: [['cheminot', 'Dédé Rousset, cheminot. Vingt ans de rails, 1 800 euros, et le gel des salaires depuis l\'été.'], ['cheminot', 'Camarade Léon, on veut du concret : du SMIC, du partage, un rapport de force. Qu\'est-ce que tu nous apportes ?']] },
+      { id: 'greve_generale', ch: 4, prompt: [['cheminot', 'Léon, ça bouge. Le préavis de grève est déposé : les trains s\'arrêtent la veille de ton meeting, et ce n\'est pas un hasard.'], ['cheminot', 'Si tu viens avec nous, tu passes pour un tribun. Si tu restes à l\'écart, tu passes pour un patron. On te laisse choisir.']] }],
+    rien: [['cheminot', 'On ne lâche rien, camarade. Les rails sont à nous.']],
+    info: [{ text: 'Combien de jours de préavis ?', reply: [['cheminot', 'Cinq jours, dans les transports publics. On le sait, on le respecte, on s\'en sert.']] }] });
+  AK.parler('economiste', {
+    seqs: [
+      { id: 'isf', ch: 2, prompt: [['economiste', 'Hélène Berthier, économiste. Vous voulez financer votre programme par l\'impôt sur la fortune. Intéressant. Savez-vous que la taxe à 75 % a été censurée en 2012 ?'], ['economiste', 'Comment comptez-vous faire plus fort, sans le même échec ?']] },
+      { id: 'capitaux', ch: 3, prompt: [['economiste', 'Les marchés préparent déjà leur réponse. Dès votre arrivée à Matignon, certains transféreront leurs avoirs à l\'étranger.'], ['economiste', 'Fuite des capitaux, spread, notation… Vous avez un plan ?']] }],
+    rien: [['economiste', 'Les chiffres ne sont ni de droite ni de gauche. Ce sont les choix qui le sont.']],
+    info: [{ text: 'Qu\'est-ce qu\'une exit tax ?', reply: [['economiste', 'Un impôt sur les plus-values latentes quand on quitte le pays. Elle freine les départs fiscaux, sans les interdire.']] }] });
+  AK.parler('militante', {
+    seqs: [
+      { id: 'ecologie', ch: 3, prompt: [['militante', 'Zoé Lanvin, collectif pour le climat. Un chantier d\'autoroute détruit quarante hectares de forêt. Demain, on s\'enchaîne aux bulldozers.'], ['militante', 'Vous viendrez, ou vous nous enverrez un communiqué ?']] },
+      { id: 'services', ch: 4, prompt: [['militante', 'À l\'hôpital, on ferme des lits. À l\'école, on remplace des profs par des vidéos. Vous voulez un pays qui marche ? Alors parlez des services publics.'], ['militante', 'Mais pas en slogans : en postes, en euros, en dates.']] }],
+    rien: [['militante', 'On avance. À notre rythme, pas à celui des sondages.']],
+    info: [{ text: 'Qu\'est-ce que l\'ONDAM ?', reply: [['militante', 'L\'objectif de dépenses d\'assurance maladie, voté chaque année. C\'est le robinet de l\'hôpital : on le règle au Parlement.']] }] });
+})();
+
+
 /* ===== game/dialogues/lexique.js ===== */
 // Le Petit Lexique de la République (glossaire pédagogique, textes dans AK.CAMPAGNE.LEXIQUE)
 (function () {
@@ -7680,8 +8112,13 @@ AK.item({ id: 'rapport_cdc', name: 'rapport de la Cour des comptes', icon: 'book
 // QG de campagne : Basile (communication), directeurs de campagne, Mme Fabre (trésorière), Inès (presse)
 (function () {
   AK.parler('basile', {
-    seqs: [{ id: 'ligne', ch: 1, prompt: [['basile', 'Alors, Chef ? Six mois, un budget qui explose, un pays qui gronde. Quelle ligne ?']] }],
-    rien: [['basile', 'On est calés. Je surveille les chaînes d\'info, les réseaux et vos jauges. Dormir, c\'est pour après.']],
+    seqs: [{ id: 'ligne', ch: 1, prompt: {
+      marion: [['basile', 'Alors, Cheffe ? Un budget qui explose, un pays qui gronde, et ce fameux plafond de verre : quatre Français sur dix ne voteront jamais pour vous. Quelle ligne ?']],
+      leon: [['basile', 'Alors, Léon ? Les syndicats gonflent les rangs, le patronat guette, et la gauche part en quatre candidatures. Quelle ligne ?']],
+      bernard: [['basile', 'Alors, Bernard ? Bruxelles nous regarde, Bercy nous regarde, les marchés aussi. Les électeurs, eux, regardent ailleurs. Quelle ligne ?']] } }],
+    rien: [['basile', 'Je surveille les chaînes d\'info, les polémiques et vos jauges. Dormir, c\'est pour après. Et le plafond de verre ne se brisera pas tout seul, Cheffe.', 'candidat_marion'],
+      ['basile', 'Je surveille les sondages, les piquets de grève et les réseaux. Ils nous aiment, camarade : tant qu\'on ne gouverne pas.', 'candidat_leon'],
+      ['basile', 'Je surveille le spread, l\'Eurogroupe et vos jauges. Tout est en ordre. Presque trop : c\'est suspect.', 'candidat_bernard']],
     info: [
       { text: 'Rappelle‑moi le contexte.', reply: [['basile', 'Un gouvernement sans majorité, un budget à 54 milliards d\'effort, des syndicats en ordre de bataille.'], ['basile', 'Et un premier tour qui s\'annonce serré : le camp souverainiste en tête, tout se joue au second tour.']] },
       { text: 'Que sont les éléments de langage ?', reply: [['basile', 'Des phrases à répéter jusqu\'à ce qu\'elles sonnent vraies. Il y en a une pile sur le tableau de liège.']] },
@@ -7691,7 +8128,7 @@ AK.item({ id: 'rapport_cdc', name: 'rapport de la Cour des comptes', icon: 'book
   const dcs = { marion: 'Mathilde Garrec', leon: 'Karim Lévêque', bernard: 'Olivier Tessier' };
   for (const h of Object.keys(dcs)) AK.parler('dc_' + h, {
     seqs: [
-      { id: 'choc493', ch: 2, prompt: [['dc_' + h, 'Le Premier ministre vient d\'engager sa responsabilité sur le budget de la Sécurité sociale : c\'est le 49.3. Nous avons vingt‑quatre heures pour décider.'], ['dc_' + h, 'Une motion de censure exige 58 signatures et 289 voix POUR. Les absents ne comptent pas, les abstentions non plus. Alors, on fait quoi ?']] },
+      { id: 'choc493', ch: 2, prompt: [['dc_' + h, 'Le Premier ministre vient d\'engager sa responsabilité sur le budget de la Sécurité sociale : c\'est le 49.3. Nous avons vingt‑quatre heures pour décider.'], ['dc_' + h, 'Une motion de censure exige 58 signatures et 289 voix POUR. Les absents ne comptent pas, les abstentions non plus. Alors, on fait quoi ?'], ['dc_' + h, { marion: 'Notre groupe pèse moins de cent voix : sans la gauche ni la droite, la censure ne passe pas.', leon: 'La gauche est éparpillée : réunir 289 voix, c\'est un exercice de patience, pas de slogans.', bernard: 'Vous avez soutenu cette majorité : censurer, c\'est renier ; ne rien faire, c\'est se noyer.' }[h]]] },
       { id: 'mediapart', ch: 2, prompt: [['dc_' + h, 'Alerte rouge : le site d\'investigation « Le Grand Angle » publie ce soir. Titre : « Les factures fantômes de la campagne ».'], ['dc_' + h, 'Cent quarante mille euros d\'« études » facturées à votre association de financement par une société que personne ne trouve. Le journaliste attend votre réaction avant minuit.']] },
       { id: 'fronde', ch: 4, cond: ['seq_parrainages'], prompt: [['dc_' + h, 'Soixante hauts fonctionnaires — Conseil d\'État, Cour des comptes, Bercy — préparent une tribune : votre programme serait « intenable ». Ils menacent de transmettre des notes internes à la presse.'], ['dc_' + h, 'Certaines notes sont couvertes par le devoir de réserve. D\'autres, non. Votre réponse décidera de qui parle.']] },
       { id: 'plf', ch: 1, cond: ['seq_amendement'], prompt: [['dc_' + h, 'Le budget arrive à l\'Assemblée mi‑novembre. Le groupe attend votre consigne : on vote quoi ?'], ['dc_' + h, 'Rappel : le déficit visé est de 5 % du PIB, avec gel du point d\'indice et des pensions au‑dessus de 1 260 €.']] }
@@ -7710,7 +8147,10 @@ AK.item({ id: 'rapport_cdc', name: 'rapport de la Cour des comptes', icon: 'book
     info: [{ text: 'Que rembourse l\'État ?', reply: [['fabre', 'Une partie des frais, si vous dépassez 5 % des voix. Sous ce seuil, c\'est à nous de payer.']] }] });
 
   AK.parler('ines', {
-    seqs: [{ id: 'attaque', ch: 3, prompt: [['ines', 'Votre rival en tête vient de passer au 20 heures. Il vous attaque. Vous répondez ?']] }],
+    seqs: [{ id: 'attaque', ch: 3, prompt: {
+      marion: [['ines', 'Votre rival en tête vient de passer au 20 heures. Il vous traite d\'« extrémiste ». Vous répondez ?']],
+      leon: [['ines', 'Votre rival en tête vient de passer au 20 heures. Il vous traite d\'« irréaliste ». Vous répondez ?']],
+      bernard: [['ines', 'Votre rival en tête vient de passer au 20 heures. Il vous traite de « technocrate sans âme ». Vous répondez ?']] } }],
     rien: [['ines', 'Je ne suis pas là pour être aimée, je suis là pour publier. Une note qui traîne ? Apportez‑la‑moi.']],
     info: [{ text: 'Avez‑vous des informations pour moi ?', reply: [['ines', 'Rien sans contrepartie. Apportez‑moi du lourd, et on parlera.']] }] });
 
@@ -7729,12 +8169,18 @@ AK.item({ id: 'rapport_cdc', name: 'rapport de la Cour des comptes', icon: 'book
 // Terrain et institutions : barrage de Marseille, Matignon, Salon de l'agriculture, Conseil constitutionnel
 (function () {
   AK.parler('nadia', {
-    seqs: [{ id: 'greve', ch: 2, cond: ['seq_gilet'], prompt: [['nadia', 'Troisième jour de blocage. Les routiers tiennent, les raffineries aussi. Vous êtes avec nous ou pas ?']] }],
+    seqs: [{ id: 'greve', ch: 2, cond: ['seq_gilet'], prompt: {
+      marion: [['nadia', 'Troisième jour de blocage. Les routiers tiennent. Vous, on ne vous a jamais vue avec nous. Vous êtes avec nous ou pas, madame Castelle ?']],
+      leon: [['nadia', 'Camarade Léon ! Troisième jour de blocage, les raffineries aussi. Alors, tu viens enfin sur le piquet ou juste pour la photo ?']],
+      bernard: [['nadia', 'Monsieur Lamy… Troisième jour de blocage. On n\'a pas l\'habitude de voir un costume ici. Vous venez écouter ou nous demander de lever le camp ?']] } }],
     rien: [['nadia', 'Vous voulez qu\'on vous écoute, ici ? Alors enfilez un gilet. Il y en a une caisse près du camion. Un costume, on ne l\'entend pas.', '!seq_gilet'],
       ['nadia', 'On ne lâche rien. Le pouvoir d\'achat, c\'est maintenant.', 'seq_gilet']],
     info: [{ text: 'Que demandent les grévistes ?', reply: [['nadia', 'Le dégel du point d\'indice, l\'indexation des pensions, et que le budget ne se fasse pas sur notre dos.']] }] });
   AK.parler('delorme', {
-    seqs: [{ id: 'patronat', ch: 2, prompt: [['delorme', 'Une agence de notation menace de dégrader la France. Les marchés vous écoutent, candidat. Qu\'allez‑vous dire ?']] }],
+    seqs: [{ id: 'patronat', ch: 2, prompt: {
+      marion: [['delorme', 'Une agence de notation menace de dégrader la France. Votre « préférence nationale » inquiète les investisseurs étrangers, madame. Qu\'allez‑vous dire ?']],
+      leon: [['delorme', 'Une agence de notation menace de dégrader la France. Votre programme de partage des richesses est lu à Francfort comme à New York. Qu\'allez‑vous dire ?']],
+      bernard: [['delorme', 'Une agence de notation menace de dégrader la France. On vous dit « candidat des marchés » : rassurez‑nous, monsieur Lamy, ou rassurez‑vous.']] } }],
     rien: [['delorme', 'Je ne fais pas de politique, je fais des chiffres. Les vôtres m\'inquiètent encore un peu.']],
     info: [{ text: 'Pourquoi la note compte‑t‑elle ?', reply: [['delorme', 'Elle fixe le coût de la dette : chaque dixième de point d\'intérêt se paie en milliards.']] }] });
   AK.parler('radio', {
@@ -7751,11 +8197,17 @@ AK.item({ id: 'rapport_cdc', name: 'rapport de la Cour des comptes', icon: 'book
     bye: 'Merci.' });
 
   AK.parler('gerard', {
-    seqs: [{ id: 'baron', ch: 3, prompt: [['gerard', 'Je préside l\'association des maires du département. Quatre‑vingts parrainages, ça se discute, candidat…']] }],
+    seqs: [{ id: 'baron', ch: 3, prompt: {
+      marion: [['gerard', 'Je préside l\'association des maires du département. Quatre‑vingts parrainages, ça se discute, madame. Mes collègues ont peur de votre étiquette.']],
+      leon: [['gerard', 'Je préside l\'association des maires du département. Vos amis aux ronds‑points m\'inquiètent, monsieur Marteau. Quatre‑vingts parrainages, ça se discute.']],
+      bernard: [['gerard', 'Je préside l\'association des maires du département. Un candidat de Bercy dans nos campagnes ? Quatre‑vingts parrainages, ça se discute, monsieur Lamy.']] } }],
     rien: [['gerard', 'On se reverra à la préfecture. Les parrainages se déposent en mars.']],
     info: [{ text: 'Qui peut parrainer ?', reply: [['gerard', 'Maires, parlementaires, conseillers régionaux… 500 signatures, dans au moins trente départements.']] }] });
   AK.parler('colette', {
-    seqs: [{ id: 'paysan', ch: 3, cond: ['seq_photo_vache'], prompt: [['colette', 'Le lait est payé moins cher que ça ne coûte à produire. Qu\'allez‑vous faire pour nous ?']] }],
+    seqs: [{ id: 'paysan', ch: 3, cond: ['seq_photo_vache'], prompt: {
+      marion: [['colette', 'Le lait est payé moins cher que ça ne coûte à produire. Vous qui parlez de souveraineté, qu\'allez‑vous faire pour nous ?']],
+      leon: [['colette', 'Le lait est payé moins cher que ça ne coûte à produire. Vous qui parlez de partage, c\'est le moment de le prouver, monsieur Marteau.']],
+      bernard: [['colette', 'Le lait est payé moins cher que ça ne coûte à produire. Vous qui parlez de réformes, dites‑moi comment je règle mes factures.']] } }],
     rien: [['colette', 'Vous voulez parler lait ? Montrez‑moi d\'abord que vous savez en tirer : il y a un seau près des bottes, et Marianne n\'attend que ça. Le photographe sera ravi.', '!seq_photo_vache'],
       ['colette', 'Prenez un fromage pour la route. La politique, ça creuse.', 'seq_photo_vache']],
     info: [{ text: 'Qui fixe le prix du lait ?', reply: [['colette', 'Les industriels, les grandes surfaces, Bruxelles… tout le monde sauf nous.']] }] });
@@ -7790,11 +8242,7 @@ AK.parler('photographe', {
     ['photographe', 'Belle photo. Elle partira dans tous les journaux régionaux demain matin.', 'seq_photo_vache']],
   info: [{ text: 'Les photos de campagne comptent‑elles vraiment ?', reply: [['photographe', 'Plus que les programmes. Une image, ça se retient ; un chiffrage, ça s\'oublie.']] }] });
 
-// V3 — commissaire (permanence de Marion)
-AK.parler('commissaire', {
-  rien: [['commissaire', 'Pour un bilan de la délinquance, il me faut une demande officielle, signée et tamponnée. Pas un appel, pas un SMS.', '!seq_rapport_police'],
-    ['commissaire', 'Le rapport est entre vos mains. Faites‑en bon usage : la sécurité, c\'est d\'abord des chiffres et des policiers.', 'seq_rapport_police']],
-  info: [{ text: 'Les chiffres de la délinquance sont‑ils fiables ?', reply: [['commissaire', 'Les chiffres, oui. L\'interprétation, c\'est la politique. Un cambriolage de plus dans une commune, ce n\'est pas une vague.']] }] });
+// commissaire : voir dialogues/heros2.js (V13)
 
 
 /* ===== game/scenes/accueil.js ===== */
@@ -7935,6 +8383,7 @@ AK.piece({
     { id: 'drapeaux_as', name: 'Drapeaux', rect: [486, 78, 20, 114], walkTo: [492, 240, 'b'], far: true, desc: ['Les drapeaux de la République, de part et d\'autre de la porte.'] },
   ],
   npcs: [
+    { id: 'polemiste', char: 'polemiste', name: 'Rémi Dasque', x: 270, y: 244, dir: 'f', dialogue: 'polemiste', on: { look: ['Un polémiste de plateau : une formule par minute, une audience à chaque seconde.'] } },
     { id: 'huissier', char: 'huissier', name: 'Huissier', x: 540, y: 238, dir: 'l', dialogue: 'huissier', on: { look: ['Un huissier à chaîne : tenue de cérémonie, regard de maître d\'hôtel qui a tout vu.'] },
       with: { cocarde: [{ flag: 'acces_hemicycle' }, { say: 'Ah, voilà qui est mieux. Séance en cours, monsieur le député — entrez sans bruit.', who: 'huissier' }] } },
     { id: 'brun', char: 'brun', name: 'Gaëtan Brun', x: 190, y: 238, dir: 'r', dialogue: 'brun', when: 'hero:marion', on: { look: ['Gaëtan Brun, président du groupe : cinquante ans de métier, trente de discipline.'] },
@@ -8160,6 +8609,9 @@ AK.piece({
     { id: 'drapeaux_b', name: 'Drapeaux', rect: [516, 66, 78, 124], walkTo: [540, 232, 'b'], desc: ['Les couleurs de la France et de l\'Europe. Bruxelles regarde le déficit de près.'] },
   ],
   npcs: [
+    { id: 'diplo', char: 'diplo', name: 'Sir Albert Kessel', x: 120, y: 240, dir: 'r', dialogue: 'diplo', on: { look: ['Un diplomate européen en poste à Paris : costume bleu nuit, ton feutré, vingt ans de compromis dans les couloirs de Bruxelles.'] } },
+    { id: 'directeur', char: 'directeur', name: 'Claire Maurel', x: 400, y: 240, dir: 'l', dialogue: 'directeur', on: { look: ['La directrice du Trésor : l\'administration qui chiffre les promesses, et qui s\'en souvient.'] } },
+    { id: 'pdg', char: 'pdg', name: 'Patrick Valmont', x: 520, y: 238, dir: 'l', dialogue: 'pdg', on: { look: ['Un PDG du CAC 40 : un costume sans un pli et un sourire sans une confidence.'] } },
     { id: 'comptes', char: 'comptes', name: 'La ministre des Comptes publics', x: 250, y: 238, dir: 'r', dialogue: 'comptes', on: { look: ['La ministre des Comptes publics : un tailleur noir, un tableau de bord, zéro cadeau.'] },
       with: { contre_chiffrage: [{ if: 'seq_chiffrage', then: [{ say: 'Je l\'ai déjà fait relire.', who: 'comptes' }], else: [
         { say: 'Un contre‑chiffrage complet ? Voyons… (elle tourne les pages) Les hypothèses de croissance sont prudentes ; l\'effet sur le déficit se tient.', who: 'comptes' }, { say: 'Je ne peux pas vous le dire en public, mais Bercy aurait écrit presque la même chose.', who: 'comptes' }, { lose: 'contre_chiffrage' }, { call: 'gain', args: { id: 'chiffrage' } }] }] } },
@@ -8237,6 +8689,7 @@ AK.piece({
     { id: 'chaises', name: 'Chaises', rect: [56, 206, 160, 34], walkTo: [140, 244, 'b'], desc: ['Des chaises alignées pour l\'assemblée générale. Les militants s\'y relaient depuis trois jours.'] },
   ],
   npcs: [
+    { id: 'cheminot', char: 'cheminot', name: 'Dédé Rousset', x: 540, y: 240, dir: 'l', dialogue: 'cheminot', on: { look: ['Un cheminot syndiqué : le gilet orange, la voix cassée par les assemblées générales.'] } },
     { id: 'mireille', char: 'mireille', name: 'Mireille Corbier', x: 210, y: 240, dir: 'r', dialogue: 'mireille', on: { look: ['Mireille Corbier, secrétaire de l\'union locale : trente ans de syndicalisme, toujours un tract en poche.'] } },
     { id: 'herve', char: 'herve', name: 'Hervé Gaudin', x: 410, y: 240, dir: 'l', dialogue: 'herve', on: { look: ['Hervé Gaudin, agent territorial : le gel du point d\'indice, il connaît par cœur.'] } },
   ],
@@ -8985,6 +9438,7 @@ AK.piece({
     { id: 'portraits_m', name: 'Portraits', rect: [130, 40, 340, 46], far: true, desc: ['Les portraits des maires du passé. Ils ont tous la même expression : « Encore une réunion. »'] },
   ],
   npcs: [
+    { id: 'conseiller', char: 'conseiller', name: 'Jean-Marc Ostier', x: 300, y: 240, dir: 'f', dialogue: 'conseiller', on: { look: ['Un conseiller de l\'Élysée : l\'œil las de ceux qui ont déjà tout vu, et plusieurs fois.'] } },
     { id: 'valade', char: 'valade', name: 'Maurice Valade', x: 160, y: 238, dir: 'r', dialogue: 'valade', on: { look: ['Maurice Valade, maire d\'une ville moyenne et vice‑président de l\'association des maires : trois mandats, zéro illusion.'] } },
     { id: 'vasseur', char: 'p_vasseur', name: 'Aurélien Vasseur', x: 450, y: 238, dir: 'l', dialogue: 'vasseur', on: { look: ['Aurélien Vasseur (Renouveau) : le sourire du réformateur pressé.'] } },
   ],
@@ -9038,6 +9492,8 @@ AK.piece({
       with: { cle_caisse: [{ if: 'seq_caisse_usine', then: ['La caisse est vide, maintenant : elle a rempli sa mission.'], else: ['La clé tourne. À l\'intérieur : des enveloppes, des billets froissés, un mot manuscrit : « Pour tenir. Merci d\'être venu. »', { sfx: 'open' }, { lose: 'cle_caisse' }, { call: 'gain', args: { id: 'caisse_usine' } }] }] } },
   ],
   npcs: [
+    { id: 'economiste', char: 'economiste', name: 'Hélène Berthier', x: 320, y: 244, dir: 'f', dialogue: 'economiste', on: { look: ['Une économiste « atterrée » : l\'universitaire qui chiffre ce que les marchés préfèrent ignorer.'] } },
+    { id: 'militante', char: 'militante', name: 'Zoé Lanvin', x: 560, y: 242, dir: 'l', dialogue: 'militante', on: { look: ['Une militante associative : des bottes, une pancarte et une patience d\'airain.'] } },
     { id: 'anais', char: 'anais', name: 'Anaïs Perrot', x: 200, y: 242, dir: 'r', dialogue: 'anais', on: { look: ['Anaïs Perrot, porte‑parole de l\'Alliance Sociale‑Écologique : la gauche de gouvernement, sans fausse note.'] } },
     { id: 'samir', char: 'samir', name: 'Samir Haddad', x: 440, y: 242, dir: 'l', dialogue: 'samir', on: { look: ['Samir Haddad, éducateur de quartier : il connaît chaque porte de chaque cage d\'escalier.'] } },
   ],
@@ -9352,6 +9808,8 @@ AK.piece({
     { id: 'drapeau_p', name: 'Drapeau', rect: [544, 60, 44, 130], walkTo: [560, 232, 'b'], desc: ['Le drapeau tricolore, accroché là pour rassurer le visiteur.'] },
   ],
   npcs: [
+    { id: 'policiere', char: 'policiere', name: 'Sandrine Vidal', x: 110, y: 240, dir: 'r', dialogue: 'policiere', on: { look: ['La déléguée d\'un syndicat de police : vingt ans de service, des heures supplémentaires impayées et un franc-parler.'] } },
+    { id: 'mairerural', char: 'mairerural', name: 'Gilbert Cazal', x: 520, y: 240, dir: 'l', dialogue: 'mairerural', on: { look: ['Un maire rural : une commune de quatre cents habitants, trois fermetures de classe, un tracteur pour toute dotation.'] } },
     { id: 'wattier', char: 'wattier', name: 'Jocelyne Wattier', x: 250, y: 240, dir: 'r', dialogue: 'wattier', on: { look: ['Jocelyne Wattier, maire d\'une commune de huit cents habitants : trente ans d\'écharpe tricolore.'] } },
     { id: 'roger', char: 'roger', name: 'Roger Delmas', x: 400, y: 240, dir: 'l', dialogue: 'roger', on: { look: ['Roger Delmas, retraité, électeur de toujours : casquette vissée, avis tranchés.'] } },
     { id: 'commissaire', char: 'commissaire', name: 'Le commissaire Bastien', x: 330, y: 244, dir: 'f', dialogue: 'commissaire', on: { look: ['Le commissaire Bastien : vingt‑deux ans de terrain, une tolérance zéro pour les formulaires mal remplis.'] },
@@ -9701,6 +10159,10 @@ AK.piece({
     syndicats: ['bourse_travail', 'mireille'], fonction_publique: ['bourse_travail', 'herve'], union_gauche: ['maison_gauche', 'anais'], quartiers: ['maison_gauche', 'samir'],
     bercy: ['bercy', 'comptes'], retraites: ['bercy', 'comptes'], maires: ['mairie', 'valade'], union_centre: ['mairie', 'vasseur'],
     // V11 : crises, 49.3 et casse-tête des parrainages
+    // V13 : séquences exclusives à chaque candidat
+    eurogroupe: ['bercy', 'diplo'], cac40: ['bercy', 'pdg'], elysee: ['mairie', 'conseiller'], reformes: ['bercy', 'directeur'], haute_fonction: ['bercy', 'directeur'], spread: ['bercy', 'diplo'],
+    police: ['permanence', 'policiere'], polemiste: ['assemblee', 'polemiste'], plafond_verre: ['assemblee', 'polemiste'], enclaves: ['permanence', 'mairerural'], metropoles: ['permanence', 'mairerural'], fait_divers: ['permanence', 'commissaire'],
+    isf: ['maison_gauche', 'economiste'], salaires: ['bourse_travail', 'cheminot'], capitaux: ['maison_gauche', 'economiste'], ecologie: ['maison_gauche', 'militante'], greve_generale: ['bourse_travail', 'cheminot'], services: ['maison_gauche', 'militante'],
     choc493: ['qg', 'dc'], mediapart: ['qg', 'dc'], fronde: ['qg', 'dc'], donateur: ['qg', 'fabre'], plafond: ['conseil_constit', 'sg'] };
 
   // L : { séquence: lettre } ; fin : étapes finales ; stop : séquence après laquelle la partie s'arrête (défaite) — à la fin du chapitre qui la contient
@@ -9818,9 +10280,9 @@ AK.piece({
   }
   const jusquAuBout = (hero, L, fin) => partie(hero, L, fin);
 
-  const MAR = { ligne: 'C', plf: 'C', sondage: 'A', fuite: 'B', financement: 'A', greve: 'A', patronat: 'B', crise: 'C', matignon: 'C', censure: 'B', baron: 'C', paysan: 'B', attaque: 'A', union_droites: 'B', pouvoir_local: 'A', parrainages: 'A', immigration: 'C', d_budget: 'B', d_secu: 'C', d_europe: 'C', d_pouvoir: 'B', duel_retraites: 'C', duel_institutions: 'C', duel_ecologie: 'B', duel_barrage: 'B', choc493: 'B', mediapart: 'B', donateur: 'A', plafond: 'B', fronde: 'B' };
-  const LEO = { ligne: 'A', plf: 'B', sondage: 'B', fuite: 'A', financement: 'A', greve: 'C', patronat: 'B', crise: 'A', matignon: 'C', qag: 'A', syndicats: 'B', baron: 'C', paysan: 'C', attaque: 'A', matinale: 'B', fonction_publique: 'B', union_gauche: 'B', parrainages: 'A', quartiers: 'C', meeting: 'C', d_budget: 'C', d_secu: 'A', d_europe: 'C', d_pouvoir: 'C', duel_retraites: 'C', duel_institutions: 'C', duel_ecologie: 'C', duel_barrage: 'B', choc493: 'B', mediapart: 'B', donateur: 'A', plafond: 'B', fronde: 'B' };
-  const BER = { ligne: 'C', plf: 'B', sondage: 'A', fuite: 'B', financement: 'A', greve: 'B', patronat: 'C', crise: 'C', matignon: 'B', bercy: 'C', baron: 'C', paysan: 'A', attaque: 'A', retraites: 'C', maires: 'C', parrainages: 'A', union_centre: 'B', d_budget: 'B', d_secu: 'C', d_europe: 'B', d_pouvoir: 'C', duel_retraites: 'B', duel_institutions: 'C', duel_ecologie: 'B', duel_barrage: 'B', choc493: 'B', mediapart: 'B', donateur: 'A', plafond: 'B', fronde: 'B' };
+  const MAR = { ligne: 'C', plf: 'C', sondage: 'A', fuite: 'B', financement: 'A', greve: 'A', patronat: 'B', crise: 'C', matignon: 'C', censure: 'B', baron: 'C', paysan: 'B', attaque: 'A', union_droites: 'B', pouvoir_local: 'A', parrainages: 'A', immigration: 'C', d_budget: 'B', d_secu: 'C', d_europe: 'C', d_pouvoir: 'B', duel_retraites: 'C', duel_institutions: 'C', duel_ecologie: 'B', duel_barrage: 'B', choc493: 'B', mediapart: 'B', donateur: 'A', plafond: 'B', fronde: 'B', police: 'B', polemiste: 'C', plafond_verre: 'B', enclaves: 'B', metropoles: 'B', fait_divers: 'B' };
+  const LEO = { ligne: 'A', plf: 'B', sondage: 'B', fuite: 'A', financement: 'A', greve: 'C', patronat: 'B', crise: 'A', matignon: 'C', qag: 'A', syndicats: 'B', baron: 'C', paysan: 'C', attaque: 'A', matinale: 'B', fonction_publique: 'B', union_gauche: 'B', parrainages: 'A', quartiers: 'C', meeting: 'C', d_budget: 'C', d_secu: 'A', d_europe: 'C', d_pouvoir: 'C', duel_retraites: 'C', duel_institutions: 'C', duel_ecologie: 'C', duel_barrage: 'B', choc493: 'B', mediapart: 'B', donateur: 'A', plafond: 'B', fronde: 'B', isf: 'B', salaires: 'B', capitaux: 'C', ecologie: 'C', greve_generale: 'C', services: 'C' };
+  const BER = { ligne: 'C', plf: 'B', sondage: 'A', fuite: 'B', financement: 'A', greve: 'B', patronat: 'C', crise: 'C', matignon: 'B', bercy: 'C', baron: 'C', paysan: 'A', attaque: 'A', retraites: 'C', maires: 'C', parrainages: 'A', union_centre: 'B', d_budget: 'B', d_secu: 'C', d_europe: 'B', d_pouvoir: 'C', duel_retraites: 'B', duel_institutions: 'C', duel_ecologie: 'B', duel_barrage: 'B', choc493: 'B', mediapart: 'B', donateur: 'A', plafond: 'B', fronde: 'B', eurogroupe: 'A', cac40: 'C', elysee: 'A', reformes: 'C', haute_fonction: 'C', spread: 'C' };
 
   AK.walkthrough('Marion Castelle — victoire', jusquAuBout('marion', MAR, [['expect', { flags: ['qualifie', 'elu', 'seq_d_pouvoir', 'seq_duel_barrage'], noflags: ['partie_perdue'], ended: true }]]));
   AK.walkthrough('Léon Marteau — victoire', jusquAuBout('leon', LEO, [['expect', { flags: ['qualifie', 'elu', 'retrait_devaux'], noflags: ['partie_perdue'], ended: true }]]));
@@ -9830,16 +10292,16 @@ AK.piece({
   AK.walkthrough('Bernard Lamy — victoire (dossier d\'amendements)', jusquAuBout('bernard', Object.assign({}, BER, { duel_institutions: 'D' }), [['expect', { flags: ['qualifie', 'elu', 'choix_duel_institutions_D'], noflags: ['partie_perdue'], ended: true }]]));
 
   // Défaite 1 — Marion : parrainages insuffisants (< 500) : candidature invalidée à l'entrée du chapitre 5
-  const MPARR = { ligne: 'A', plf: 'A', sondage: 'C', fuite: 'C', financement: 'A', greve: 'A', patronat: 'A', crise: 'C', matignon: 'A', censure: 'C', baron: 'A', paysan: 'C', attaque: 'A', union_droites: 'A', pouvoir_local: 'C', parrainages: 'C', immigration: 'A', choc493: 'B', mediapart: 'B', donateur: 'A', plafond: 'B', fronde: 'B' };
+  const MPARR = { ligne: 'A', plf: 'A', sondage: 'C', fuite: 'C', financement: 'A', greve: 'A', patronat: 'A', crise: 'C', matignon: 'A', censure: 'C', baron: 'A', paysan: 'C', attaque: 'A', union_droites: 'A', pouvoir_local: 'C', parrainages: 'C', immigration: 'A', choc493: 'B', mediapart: 'B', donateur: 'A', plafond: 'B', fronde: 'B', police: 'A', polemiste: 'A', plafond_verre: 'A', enclaves: 'A', metropoles: 'A', fait_divers: 'A' };
   AK.walkthrough('Défaite — parrainages insuffisants', partie('marion', MPARR, [['expect', { flags: ['defaite_parr', 'partie_perdue'], ended: true }]], 'immigration'));
   // Défaite 2 — Léon : éliminé au premier tour (rang > 2)
-  const LELI = { ligne: 'A', plf: 'C', sondage: 'A', fuite: 'B', financement: 'B', greve: 'A', patronat: 'A', crise: 'C', matignon: 'A', syndicats: 'B', baron: 'B', paysan: 'C', attaque: 'A', fonction_publique: 'C', union_gauche: 'A', parrainages: 'B', quartiers: 'B', d_budget: 'C', d_secu: 'A', d_europe: 'B', d_pouvoir: 'C', choc493: 'B', mediapart: 'B', donateur: 'A', plafond: 'B', fronde: 'B' };
+  const LELI = { ligne: 'A', plf: 'C', sondage: 'A', fuite: 'B', financement: 'B', greve: 'A', patronat: 'A', crise: 'C', matignon: 'A', syndicats: 'B', baron: 'B', paysan: 'C', attaque: 'A', fonction_publique: 'C', union_gauche: 'A', parrainages: 'B', quartiers: 'B', d_budget: 'C', d_secu: 'A', d_europe: 'B', d_pouvoir: 'C', choc493: 'B', mediapart: 'B', donateur: 'A', plafond: 'B', fronde: 'B', isf: 'B', salaires: 'B', capitaux: 'B', ecologie: 'A', greve_generale: 'A', services: 'A' };
   AK.walkthrough('Défaite — éliminé au premier tour', partie('leon', LELI, [], 'premier_tour').concat([['expect', { flags: ['partie_perdue'], noflags: ['qualifie', 'elu'], ended: true }]]));
   // Défaite 3 — Bernard : qualifié mais battu au second tour
-  const BBAT = { ligne: 'C', plf: 'C', sondage: 'A', fuite: 'B', financement: 'C', greve: 'A', patronat: 'B', crise: 'A', matignon: 'B', bercy: 'A', baron: 'B', paysan: 'C', attaque: 'C', retraites: 'B', maires: 'C', parrainages: 'C', union_centre: 'C', d_budget: 'C', d_secu: 'B', d_europe: 'B', d_pouvoir: 'B', duel_retraites: 'C', duel_institutions: 'B', duel_ecologie: 'B', duel_barrage: 'A', choc493: 'B', mediapart: 'B', donateur: 'A', plafond: 'B', fronde: 'B' };
+  const BBAT = { ligne: 'C', plf: 'C', sondage: 'A', fuite: 'B', financement: 'C', greve: 'A', patronat: 'B', crise: 'A', matignon: 'B', bercy: 'A', baron: 'B', paysan: 'C', attaque: 'C', retraites: 'B', maires: 'C', parrainages: 'C', union_centre: 'C', d_budget: 'C', d_secu: 'B', d_europe: 'B', d_pouvoir: 'B', duel_retraites: 'C', duel_institutions: 'B', duel_ecologie: 'B', duel_barrage: 'A', choc493: 'B', mediapart: 'B', donateur: 'A', plafond: 'B', fronde: 'B', eurogroupe: 'A', cac40: 'A', elysee: 'A', reformes: 'A', haute_fonction: 'A', spread: 'A' };
   AK.walkthrough('Défaite — battu au second tour', jusquAuBout('bernard', BBAT, [['expect', { flags: ['qualifie', 'partie_perdue'], noflags: ['elu'], ended: true }]]));
   // Défaite 4 — Marion : crise de crédibilité en plein duel (crédibilité ≤ 3)
-  const MCRED = { ligne: 'A', plf: 'A', sondage: 'A', fuite: 'A', financement: 'A', greve: 'A', patronat: 'A', crise: 'A', matignon: 'A', censure: 'A', qag: 'A', matinale: 'C', meeting: 'A', baron: 'B', paysan: 'A', attaque: 'B', union_droites: 'B', pouvoir_local: 'A', parrainages: 'C', immigration: 'B', d_budget: 'A', d_secu: 'A', d_europe: 'A', d_pouvoir: 'A', duel_retraites: 'A', duel_institutions: 'A', duel_ecologie: 'C', duel_barrage: 'B', choc493: 'B', mediapart: 'B', donateur: 'B', plafond: 'B', fronde: 'A' };
+  const MCRED = { ligne: 'A', plf: 'A', sondage: 'A', fuite: 'A', financement: 'A', greve: 'A', patronat: 'A', crise: 'A', matignon: 'A', censure: 'A', qag: 'A', matinale: 'C', meeting: 'A', baron: 'B', paysan: 'A', attaque: 'B', union_droites: 'B', pouvoir_local: 'A', parrainages: 'C', immigration: 'B', d_budget: 'A', d_secu: 'A', d_europe: 'A', d_pouvoir: 'A', duel_retraites: 'A', duel_institutions: 'A', duel_ecologie: 'C', duel_barrage: 'B', choc493: 'B', mediapart: 'B', donateur: 'B', plafond: 'B', fronde: 'A', police: 'C', polemiste: 'B', plafond_verre: 'B', enclaves: 'A', metropoles: 'A', fait_divers: 'A' };
   AK.walkthrough('Défaite — crise de crédibilité', partie('marion', MCRED, [['expect', { flags: ['defaite_cred', 'partie_perdue'], noflags: ['elu'], ended: true }]], 'premier_tour'));
 })();
 
