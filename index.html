@@ -3438,9 +3438,9 @@ function createMusic(a, out) {
   };
   // Candidats (identifiants = ceux des PNJ/héros). `parti` : étiquette fictive.
   const CAND = {
-    marion:  { nom: 'Marion Castelle', court: 'Castelle', parti: 'Ralliement Souverain', pos: { eco: 0.2, ordre: 0.7, souv: 0.7, rupt: 0.6 },    cred: 30, media: 55, rej: 43, loy: 0.953 },
-    leon:    { nom: 'Léon Marteau',    court: 'Marteau',  parti: 'Gauche Debout',        pos: { eco: 0.8, ordre: -0.6, souv: 0.1, rupt: 0.8 },   cred: 30, media: 60, rej: 51, loy: 0.196 },
-    bernard: { nom: 'Bernard Lamy',    court: 'Lamy',     parti: 'Cap Central',          pos: { eco: -0.5, ordre: 0.2, souv: -0.5, rupt: -0.4 }, cred: 70, media: 45, rej: 38, loy: -0.65 },
+    marion:  { nom: 'Marion Castelle', court: 'Castelle', parti: 'Ralliement Souverain', pos: { eco: 0.2, ordre: 0.7, souv: 0.7, rupt: 0.6 },    cred: 30, media: 55, rej: 45, loy: 0.953 },
+    leon:    { nom: 'Léon Marteau',    court: 'Marteau',  parti: 'Gauche Debout',        pos: { eco: 0.8, ordre: -0.6, souv: 0.1, rupt: 0.8 },   cred: 30, media: 60, rej: 40, loy: 0.7 },
+    bernard: { nom: 'Bernard Lamy',    court: 'Lamy',     parti: 'Cap Central',          pos: { eco: -0.5, ordre: 0.2, souv: -0.5, rupt: -0.4 }, cred: 70, media: 45, rej: 38, loy: -0.55 },
     devaux:  { nom: 'Camille Devaux',  court: 'Devaux',   parti: 'Alliance Sociale-Écologique', pos: { eco: 0.4, ordre: -0.3, souv: -0.4, rupt: 0.1 }, cred: 55, media: 55, rej: 46, loy: -0.4 },
     rochas:  { nom: 'Étienne Rochas',  court: 'Rochas',   parti: 'Droite Républicaine',  pos: { eco: -0.7, ordre: 0.6, souv: 0.0, rupt: -0.2 },  cred: 55, media: 45, rej: 42, loy: -0.65 },
     vasseur: { nom: 'Aurélien Vasseur', court: 'Vasseur', parti: 'Renouveau',            pos: { eco: -0.4, ordre: 0.0, souv: -0.7, rupt: -0.5 }, cred: 50, media: 40, rej: 39, loy: -0.806 },
@@ -3491,7 +3491,7 @@ function createMusic(a, out) {
   const KIN = 0.5, KOUT = 0.35; // fidélité de la base (centièmes) par centième de ligne déplacée vers le centre (KIN, déçoit) ou vers l'extrême (KOUT, galvanise)
   const ECH_L = 1.0;           // échelle des effets de fidélité (la fidélité de la base bouge plus lentement que l'image)
   const SEUIL_PARR = 500;      // parrainages requis (≥ 500 présentateurs, dans au moins 30 départements)
-  const DEPART = { marion: { parr: 430, tres: 90 }, leon: { parr: 440, tres: 80 }, bernard: { parr: 560, tres: 120 } };   // tres en centaines de milliers d'euros
+  const DEPART = { marion: { parr: 430, tres: 90 }, leon: { parr: 485, tres: 80 }, bernard: { parr: 560, tres: 120 } };   // tres en centaines de milliers d'euros
 
   // Sensibilité propre à chaque candidat selon le TYPE de ligne choisie : [crédibilité, médias, rejet, loyauté(centièmes)]
   //   A = ligne de rupture / radicale · B = ligne institutionnelle / responsable · C = ligne tactique / médiatique
