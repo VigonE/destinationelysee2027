@@ -3438,9 +3438,9 @@ function createMusic(a, out) {
   };
   // Candidats (identifiants = ceux des PNJ/héros). `parti` : étiquette fictive.
   const CAND = {
-    marion:  { nom: 'Marion Castelle', court: 'Castelle', parti: 'Ralliement Souverain', pos: { eco: 0.2, ordre: 0.7, souv: 0.7, rupt: 0.6 },    cred: 30, media: 55, rej: 45, loy: 0.953 },
-    leon:    { nom: 'Léon Marteau',    court: 'Marteau',  parti: 'Gauche Debout',        pos: { eco: 0.8, ordre: -0.6, souv: 0.1, rupt: 0.8 },   cred: 30, media: 60, rej: 40, loy: 0.7 },
-    bernard: { nom: 'Bernard Lamy',    court: 'Lamy',     parti: 'Cap Central',          pos: { eco: -0.5, ordre: 0.2, souv: -0.5, rupt: -0.4 }, cred: 70, media: 45, rej: 38, loy: -0.55 },
+    marion:  { nom: 'Marion Castelle', court: 'Castelle', parti: 'Ralliement Souverain', pos: { eco: 0.2, ordre: 0.7, souv: 0.7, rupt: 0.6 },    cred: 30, media: 55, rej: 45, loy: 0.72 },
+    leon:    { nom: 'Léon Marteau',    court: 'Marteau',  parti: 'Gauche Debout',        pos: { eco: 0.8, ordre: -0.6, souv: 0.1, rupt: 0.8 },   cred: 30, media: 60, rej: 40, loy: 0.55 },
+    bernard: { nom: 'Bernard Lamy',    court: 'Lamy',     parti: 'Cap Central',          pos: { eco: -0.5, ordre: 0.2, souv: -0.5, rupt: -0.4 }, cred: 70, media: 45, rej: 38, loy: -0.65 },
     devaux:  { nom: 'Camille Devaux',  court: 'Devaux',   parti: 'Alliance Sociale-Écologique', pos: { eco: 0.4, ordre: -0.3, souv: -0.4, rupt: 0.1 }, cred: 55, media: 55, rej: 46, loy: -0.4 },
     rochas:  { nom: 'Étienne Rochas',  court: 'Rochas',   parti: 'Droite Républicaine',  pos: { eco: -0.7, ordre: 0.6, souv: 0.0, rupt: -0.2 },  cred: 55, media: 45, rej: 42, loy: -0.65 },
     vasseur: { nom: 'Aurélien Vasseur', court: 'Vasseur', parti: 'Renouveau',            pos: { eco: -0.4, ordre: 0.0, souv: -0.7, rupt: -0.5 }, cred: 50, media: 40, rej: 39, loy: -0.806 },
@@ -3501,7 +3501,7 @@ function createMusic(a, out) {
     bernard: { A: [-3, 1, 2, -2], B: [1, -1, 0, 1], C: [0, 1, 0, 0] },
   };
   // Difficulté propre à chaque candidat : à sondage élevé, chaque geste rapporte moins ; à sondage bas, un geste réussi pèse plus
-  const ECH = { marion: 0.45, leon: 1.4, bernard: 1.2 };
+  const ECH = { marion: 0.45, leon: 1.4, bernard: 2.1 };
   // La lassitude : au‑delà de 6 fois la même ligne, l'électorat (et la presse) s'en lasse — [crédibilité, médias, rejet, loyauté]
   const LASSITUDE = { A: [-1, 0, 2, 0], B: [0, -2, 0, -2], C: [-2, -2, 0, 0] };
 
@@ -3520,7 +3520,7 @@ function createMusic(a, out) {
       st[id + '_s'] = Math.round(c.pos.souv * 100); st[id + '_r'] = Math.round(c.pos.rupt * 100);
       st[id + '_cred'] = c.cred; st[id + '_media'] = c.media; st[id + '_rej'] = c.rej; st[id + '_loy'] = Math.round(c.loy * 100); st[id + '_on'] = 1;
     }
-    st.parr = DEPART[hero].parr; st.tres = DEPART[hero].tres; st.nA = 0; st.nB = 0; st.nC = 0;
+    st.parr = DEPART[hero].parr; st.tres = DEPART[hero].tres; st.nA = 0; st.nB = 0; st.nC = 0; st.cx = 0;   // V14 : cx = mémoire des choix lourds de conséquences (jugement.js)
     return st;
   }
   const KEYS = Object.keys(etat0('marion'));
@@ -3567,6 +3567,7 @@ function createMusic(a, out) {
   }
 
   // vecteur effectif d'une option : base + tempérament + lassitude + branche conditionnelle
+  const C_JUGE = () => AK.CAMPAGNE && AK.CAMPAGNE.JUGE;
   const ZERO = () => ({ e: 0, o: 0, s: 0, r: 0, c: 0, m: 0, j: 0, l: 0, p: 0, t: 0 });
   const add = (a, b) => { for (const k in b) if (k in a) a[k] += b[k]; return a; };
   function vecteur(st, seqId, lettre, hero) {
@@ -3578,6 +3579,7 @@ function createMusic(a, out) {
       const extra = Math.max(0, (st['n' + tag] || 0) - PARAM.LASS); info.extra = extra;
       if (extra && LASSITUDE[tag]) { const l = LASSITUDE[tag]; v.c += l[0] * extra; v.m += l[1] * extra; v.j += l[2] * extra; v.l += l[3] * extra; }
     }
+    if (C_JUGE()) C_JUGE()(st, seqId, lettre, hero, v, info);   // V14 : jugement (bonne réponse / conséquences croisées), jugement.js
     if (o.h && o.h[hero] && o.h[hero].v) add(v, o.h[hero].v);   // V11 : modificateur de difficulté propre au candidat (absent des données antérieures → sans effet)
     const ech = ECH[hero] || 1; for (const k of ['e', 'o', 's', 'r', 'c', 'm', 'j', 'l']) v[k] = Math.round(v[k] * ech);
     if (o.si) {
@@ -3589,6 +3591,7 @@ function createMusic(a, out) {
   }
   const bornes = (x, a, b) => Math.max(a, Math.min(b, x));
   function appliquer(st, hero, v, info) {
+    if (info && info.rec && AK.CAMPAGNE.REC) AK.CAMPAGNE.REC(st, info.rec);   // V14 : mémorise le choix
     // la ligne ne peut dériver que de ±40 centièmes autour de la position d'origine (au‑delà, plus personne n'y croit)
     const p0 = M().CAND[hero].pos, DER = PARAM.DER;
     const dr = (k, x0, dx) => bornes(st[hero + '_' + k] + dx, Math.round(x0 * 100) - DER, Math.round(x0 * 100) + DER);
@@ -3784,6 +3787,7 @@ function createMusic(a, out) {
     await api.run([{ sfx: apres - avant >= 0 ? 'ok' : 'buzz' }, { say: ligne, who: 'narrator' },
       { say: 'EFFETS — ' + (eff(v) || 'aucun effet chiffré') + (info.extra ? '  ·  LASSITUDE (même ligne trop souvent)' : ''), who: 'narrator' },
       { say: 'FICHE D\'IMPACT — ' + o.fiche, who: 'narrator' }]);
+    for (const n of info.notes || []) await api.run([{ say: n, who: 'narrator' }]);   // V14 : erreur d'appréciation / conséquence d'un choix antérieur
     if (o.h && o.h[hero] && o.h[hero].note) await api.run([{ say: 'DIFFICULTÉ — ' + o.h[hero].note, who: 'narrator' }]);   // V11
     if (ret) await api.run([{ say: 'DÉSISTEMENT — ' + M().CAND[ret].nom + ' quitte la course. Ses électeurs se reportent sur les candidats restants.', who: 'narrator' }]);
     if (!api.flag('marge_' + a.id) && s.marge) { api.setFlag('marge_' + a.id); await api.run([{ say: 'NOTE DE MARGE — ' + s.marge, who: 'narrator' }]); }
@@ -5924,6 +5928,66 @@ AK.config({
     P.path((x) => { x.moveTo(-13, 6); x.quadraticCurveTo(-13, -12, 0, -12); x.quadraticCurveTo(13, -12, 13, 6); x.closePath(); }, [S(c, 0.3), S(c, -0.25)], ST); P.rect(-15, 5, 30, 5, S(c, -0.3), ST); P.rect(-2, -12, 4, 13, S(c, 0.35));
   };
   I.pieces = (P, c = '#f0c840') => { for (const [x, y] of [[-6, 4], [6, 4], [0, -6]]) P.circle(x, y, 8, [S(c, 0.4), S(c, -0.3)], ST); };
+})(globalThis.AK);
+
+
+/* ===== game/jugement.js ===== */
+// ============================================================================
+//  V14 — JUGEMENT : un jeu de réflexion, pas un jeu de hasard.
+//  Données pures + deux points d'accroche de campagne.js (C.JUGE, C.REC), rejouables par le simulateur.
+//   • BON : pour chaque séquence exclusive d'un candidat, la réponse la mieux fondée (celle que la « note de marge » justifie).
+//     Une autre réponse coûte une « erreur d'appréciation » (PEN) — plus lourde pour les candidats les plus exposés.
+//   • CROSS : une décision antérieure (TAGS, mémorisée dans la variable `cx`) pèse sur une séquence ultérieure.
+//  La difficulté propre à chaque candidat est conservée (échelle ECH, tempérament, départ) : PEN est appliquée AVANT l'échelle ECH.
+// ============================================================================
+(function (AK) {
+  const C = AK.CAMPAGNE;
+  const BON = {
+    bernard: {
+      eurogroupe: ['B', 'Étaler le déficit contre des réformes chiffrées est la voie que le Pacte réformé prévoit : refuser ou fuiter braque la Commission.'],
+      cac40: ['B', 'Un dîner n\'a de valeur que s\'il porte un plan chiffré : sans lui, vous n\'obtenez ni appuis ni crédit, seulement l\'étiquette.'],
+      elysee: ['C', 'Le soutien d\'un sortant impopulaire se négocie : l\'accepter gratuitement ou le rejeter en bloc coûte cher.'],
+      reformes: ['C', 'Une réforme évaluée avant d\'être généralisée résiste mieux : cent jours ou calendrier flou fragilisent vos arbitrages.'],
+      haute_fonction: ['B', 'Mobilité et transparence satisfont l\'opinion sans déclarer la guerre aux grands corps qui chiffrent votre programme.'],
+      spread: ['B', 'Les marchés se calment devant un calendrier public et indépendant, pas devant un choc ni une posture.'],
+    },
+    marion: {
+      police: ['B', 'La légitime défense est déjà encadrée par la loi (L435-1) : des moyens et une formation répondent à ce que demandent les syndicats.'],
+      polemiste: ['C', 'Sur un plateau hostile, un chiffre précis vaut mieux que l\'escalade ou la fuite dans les généralités.'],
+      plafond_verre: ['B', 'Le rejet ne baisse qu\'avec des gestes visibles (vocabulaire, alliés) : le double discours se fait démasquer.'],
+      enclaves: ['B', 'Un veto aux maires est inapplicable, un meeting sans mesure ne convainc pas : un pacte conditionné parle aux élus.'],
+      metropoles: ['B', 'Entre abolir les ZFE et esquiver, une aide ciblée aux ménages éloignés reste la seule réponse financée.'],
+      fait_divers: ['B', 'Face à un fait divers, parler avant l\'enquête vous expose : la retenue protège votre crédibilité.'],
+    },
+    leon: {
+      isf: ['C', 'Une taxe à 90 % serait censurée comme confiscatoire (2012) : un impôt plancher est plus simple et plus tenable.'],
+      salaires: ['B', 'Un SMIC à 2 000 € d\'un coup se paie en emplois ; un cadre négocié et indexé est la voie qui tient.'],
+      capitaux: ['B', 'Un contrôle des capitaux est un aveu de panique : seul un pare-feu européen rassure marchés et épargnants.'],
+      ecologie: ['B', 'La désobéissance isole des élus dont vous avez besoin : la voie judiciaire a déjà fait plier l\'État (Grande-Synthe, 2021).'],
+      greve_generale: ['C', 'Rejoindre la grève ou lui tourner le dos vous fait perdre un camp : sauver le meeting sans la trahir est la seule sortie.'],
+      services: ['B', 'Des postes financés et programmés convainquent les agents ; cent mille embauches sans financement et les annonces sont lues comme du vent.'],
+    },
+  };
+  // erreur d'appréciation : [c, m, j, l] bruts, avant l'échelle ECH (Marion ×0,45, Bernard ×1,2, Léon ×1,4)
+  const PEN = { marion: { c: -10, m: -3, j: 3, l: -1 }, bernard: { c: -7, m: -2, j: 2, l: -1 }, leon: { c: -7, m: -2, j: 2, l: -1 } };
+  const TAGS = { 'eurogroupe:C': 1, 'reformes:A': 2, 'police:A': 4, 'polemiste:A': 8, 'isf:A': 16, 'salaires:A': 32 };
+  const CROSS = [
+    { hero: 'bernard', tag: 'eurogroupe:C', sur: 'spread', v: { c: -4, m: -1 }, note: 'La fuite orchestrée contre la Commission n\'est pas oubliée : Bruxelles ne vous aide pas quand les marchés tanguent.' },
+    { hero: 'bernard', tag: 'reformes:A', sur: 'haute_fonction', v: { c: -4, j: 1 }, note: 'Après le choc des cent jours promis, les grands corps lisent chaque nouvelle annonce comme une menace.' },
+    { hero: 'marion', tag: 'polemiste:A', sur: 'plafond_verre', v: { j: 3, c: -3 }, note: 'Votre duel de ton a fixé l\'image que retiennent les électeurs hésitants : le plafond de verre s\'est épaissi.' },
+    { hero: 'marion', tag: 'police:A', sur: 'fait_divers', v: { c: -4, j: 1 }, note: 'Vous aviez promis l\'impunité aux policiers : chacune de vos paroles est comparée à ce serment.' },
+    { hero: 'leon', tag: 'isf:A', sur: 'capitaux', v: { c: -5, m: -1 }, note: 'Votre taxe à 90 % avait déjà alerté les marchés : les capitaux partent mieux préparés que vous.' },
+    { hero: 'leon', tag: 'salaires:A', sur: 'greve_generale', v: { c: -3, j: 2 }, note: 'Le patronat s\'est durci après vos 2 000 € : la grève est lue comme une guerre sociale.' },
+  ];
+  const addv = (v, d) => { for (const k in d) if (k in v) v[k] += d[k]; };
+  C.BON = BON; C.PEN = PEN; C.CROSS = CROSS;
+  C.JUGE = (st, id, l, hero, v, info) => {
+    info.rec = { id, l }; info.notes = info.notes || [];
+    const b = (BON[hero] || {})[id];
+    if (b && l !== b[0]) { addv(v, PEN[hero]); info.notes.push('ERREUR D\'APPRÉCIATION — ' + b[1]); }
+    for (const r of CROSS) if (r.hero === hero && r.sur === id && (st.cx & TAGS[r.tag])) { addv(v, r.v); info.notes.push('CONSÉQUENCE — ' + r.note); }
+  };
+  C.REC = (st, rec) => { const bit = TAGS[rec.id + ':' + rec.l]; if (bit) st.cx = (st.cx | bit); };
 })(globalThis.AK);
 
 
@@ -10280,9 +10344,9 @@ AK.piece({
   }
   const jusquAuBout = (hero, L, fin) => partie(hero, L, fin);
 
-  const MAR = { ligne: 'C', plf: 'C', sondage: 'A', fuite: 'B', financement: 'A', greve: 'A', patronat: 'B', crise: 'C', matignon: 'C', censure: 'B', baron: 'C', paysan: 'B', attaque: 'A', union_droites: 'B', pouvoir_local: 'A', parrainages: 'A', immigration: 'C', d_budget: 'B', d_secu: 'C', d_europe: 'C', d_pouvoir: 'B', duel_retraites: 'C', duel_institutions: 'C', duel_ecologie: 'B', duel_barrage: 'B', choc493: 'B', mediapart: 'B', donateur: 'A', plafond: 'B', fronde: 'B', police: 'B', polemiste: 'C', plafond_verre: 'B', enclaves: 'B', metropoles: 'B', fait_divers: 'B' };
-  const LEO = { ligne: 'A', plf: 'B', sondage: 'B', fuite: 'A', financement: 'A', greve: 'C', patronat: 'B', crise: 'A', matignon: 'C', qag: 'A', syndicats: 'B', baron: 'C', paysan: 'C', attaque: 'A', matinale: 'B', fonction_publique: 'B', union_gauche: 'B', parrainages: 'A', quartiers: 'C', meeting: 'C', d_budget: 'C', d_secu: 'A', d_europe: 'C', d_pouvoir: 'C', duel_retraites: 'C', duel_institutions: 'C', duel_ecologie: 'C', duel_barrage: 'B', choc493: 'B', mediapart: 'B', donateur: 'A', plafond: 'B', fronde: 'B', isf: 'B', salaires: 'B', capitaux: 'C', ecologie: 'C', greve_generale: 'C', services: 'C' };
-  const BER = { ligne: 'C', plf: 'B', sondage: 'A', fuite: 'B', financement: 'A', greve: 'B', patronat: 'C', crise: 'C', matignon: 'B', bercy: 'C', baron: 'C', paysan: 'A', attaque: 'A', retraites: 'C', maires: 'C', parrainages: 'A', union_centre: 'B', d_budget: 'B', d_secu: 'C', d_europe: 'B', d_pouvoir: 'C', duel_retraites: 'B', duel_institutions: 'C', duel_ecologie: 'B', duel_barrage: 'B', choc493: 'B', mediapart: 'B', donateur: 'A', plafond: 'B', fronde: 'B', eurogroupe: 'A', cac40: 'C', elysee: 'A', reformes: 'C', haute_fonction: 'C', spread: 'C' };
+  const MAR = { ligne: 'A', plf: 'C', sondage: 'C', fuite: 'A', financement: 'C', greve: 'C', patronat: 'A', crise: 'C', matignon: 'C', censure: 'C', baron: 'C', paysan: 'B', attaque: 'A', union_droites: 'B', pouvoir_local: 'A', parrainages: 'A', immigration: 'B', d_budget: 'B', d_secu: 'B', d_europe: 'C', d_pouvoir: 'B', duel_retraites: 'C', duel_institutions: 'C', duel_ecologie: 'B', duel_barrage: 'B', choc493: 'B', mediapart: 'B', donateur: 'A', plafond: 'B', fronde: 'B', police: 'B', polemiste: 'C', plafond_verre: 'B', enclaves: 'B', metropoles: 'B', fait_divers: 'B', qag: 'C', matinale: 'B', meeting: 'C' };
+  const LEO = { ligne: 'C', plf: 'C', sondage: 'B', fuite: 'A', financement: 'A', greve: 'C', patronat: 'A', crise: 'A', matignon: 'C', qag: 'A', syndicats: 'B', baron: 'C', paysan: 'C', attaque: 'A', matinale: 'B', fonction_publique: 'B', union_gauche: 'B', parrainages: 'A', quartiers: 'C', meeting: 'C', d_budget: 'C', d_secu: 'A', d_europe: 'C', d_pouvoir: 'C', duel_retraites: 'C', duel_institutions: 'C', duel_ecologie: 'C', duel_barrage: 'B', choc493: 'B', mediapart: 'C', donateur: 'A', plafond: 'B', fronde: 'B', isf: 'C', salaires: 'B', capitaux: 'B', ecologie: 'B', greve_generale: 'C', services: 'B' };
+  const BER = { ligne: 'A', plf: 'A', sondage: 'A', fuite: 'A', financement: 'B', greve: 'A', patronat: 'C', crise: 'A', matignon: 'A', bercy: 'C', baron: 'C', paysan: 'A', attaque: 'A', retraites: 'C', maires: 'C', parrainages: 'A', union_centre: 'B', d_budget: 'B', d_secu: 'C', d_europe: 'B', d_pouvoir: 'C', duel_retraites: 'B', duel_institutions: 'C', duel_ecologie: 'B', duel_barrage: 'B', choc493: 'C', mediapart: 'C', donateur: 'B', plafond: 'B', fronde: 'B', eurogroupe: 'B', cac40: 'B', elysee: 'C', reformes: 'C', haute_fonction: 'B', spread: 'B', qag: 'C', matinale: 'B', meeting: 'B' };
 
   AK.walkthrough('Marion Castelle — victoire', jusquAuBout('marion', MAR, [['expect', { flags: ['qualifie', 'elu', 'seq_d_pouvoir', 'seq_duel_barrage'], noflags: ['partie_perdue'], ended: true }]]));
   AK.walkthrough('Léon Marteau — victoire', jusquAuBout('leon', LEO, [['expect', { flags: ['qualifie', 'elu', 'retrait_devaux'], noflags: ['partie_perdue'], ended: true }]]));
@@ -10292,16 +10356,16 @@ AK.piece({
   AK.walkthrough('Bernard Lamy — victoire (dossier d\'amendements)', jusquAuBout('bernard', Object.assign({}, BER, { duel_institutions: 'D' }), [['expect', { flags: ['qualifie', 'elu', 'choix_duel_institutions_D'], noflags: ['partie_perdue'], ended: true }]]));
 
   // Défaite 1 — Marion : parrainages insuffisants (< 500) : candidature invalidée à l'entrée du chapitre 5
-  const MPARR = { ligne: 'A', plf: 'A', sondage: 'C', fuite: 'C', financement: 'A', greve: 'A', patronat: 'A', crise: 'C', matignon: 'A', censure: 'C', baron: 'A', paysan: 'C', attaque: 'A', union_droites: 'A', pouvoir_local: 'C', parrainages: 'C', immigration: 'A', choc493: 'B', mediapart: 'B', donateur: 'A', plafond: 'B', fronde: 'B', police: 'A', polemiste: 'A', plafond_verre: 'A', enclaves: 'A', metropoles: 'A', fait_divers: 'A' };
+  const MPARR = { ligne: 'A', plf: 'A', sondage: 'C', fuite: 'C', financement: 'A', greve: 'A', patronat: 'A', crise: 'C', matignon: 'A', censure: 'C', baron: 'A', paysan: 'C', attaque: 'A', union_droites: 'A', pouvoir_local: 'C', parrainages: 'C', immigration: 'A', choc493: 'B', mediapart: 'B', donateur: 'A', plafond: 'B', fronde: 'B', police: 'B', polemiste: 'B', plafond_verre: 'A', enclaves: 'A', metropoles: 'A', fait_divers: 'A' };
   AK.walkthrough('Défaite — parrainages insuffisants', partie('marion', MPARR, [['expect', { flags: ['defaite_parr', 'partie_perdue'], ended: true }]], 'immigration'));
   // Défaite 2 — Léon : éliminé au premier tour (rang > 2)
   const LELI = { ligne: 'A', plf: 'C', sondage: 'A', fuite: 'B', financement: 'B', greve: 'A', patronat: 'A', crise: 'C', matignon: 'A', syndicats: 'B', baron: 'B', paysan: 'C', attaque: 'A', fonction_publique: 'C', union_gauche: 'A', parrainages: 'B', quartiers: 'B', d_budget: 'C', d_secu: 'A', d_europe: 'B', d_pouvoir: 'C', choc493: 'B', mediapart: 'B', donateur: 'A', plafond: 'B', fronde: 'B', isf: 'B', salaires: 'B', capitaux: 'B', ecologie: 'A', greve_generale: 'A', services: 'A' };
   AK.walkthrough('Défaite — éliminé au premier tour', partie('leon', LELI, [], 'premier_tour').concat([['expect', { flags: ['partie_perdue'], noflags: ['qualifie', 'elu'], ended: true }]]));
   // Défaite 3 — Bernard : qualifié mais battu au second tour
-  const BBAT = { ligne: 'C', plf: 'C', sondage: 'A', fuite: 'B', financement: 'C', greve: 'A', patronat: 'B', crise: 'A', matignon: 'B', bercy: 'A', baron: 'B', paysan: 'C', attaque: 'C', retraites: 'B', maires: 'C', parrainages: 'C', union_centre: 'C', d_budget: 'C', d_secu: 'B', d_europe: 'B', d_pouvoir: 'B', duel_retraites: 'C', duel_institutions: 'B', duel_ecologie: 'B', duel_barrage: 'A', choc493: 'B', mediapart: 'B', donateur: 'A', plafond: 'B', fronde: 'B', eurogroupe: 'A', cac40: 'A', elysee: 'A', reformes: 'A', haute_fonction: 'A', spread: 'A' };
+  const BBAT = { ligne: 'C', plf: 'C', sondage: 'A', fuite: 'B', financement: 'C', greve: 'A', patronat: 'B', crise: 'A', matignon: 'B', bercy: 'A', baron: 'B', paysan: 'C', attaque: 'C', retraites: 'B', maires: 'C', parrainages: 'C', union_centre: 'C', d_budget: 'C', d_secu: 'B', d_europe: 'B', d_pouvoir: 'B', duel_retraites: 'C', duel_institutions: 'B', duel_ecologie: 'B', duel_barrage: 'A', choc493: 'B', mediapart: 'B', donateur: 'A', plafond: 'B', fronde: 'B', eurogroupe: 'C', cac40: 'A', elysee: 'C', reformes: 'C', haute_fonction: 'A', spread: 'C' };
   AK.walkthrough('Défaite — battu au second tour', jusquAuBout('bernard', BBAT, [['expect', { flags: ['qualifie', 'partie_perdue'], noflags: ['elu'], ended: true }]]));
   // Défaite 4 — Marion : crise de crédibilité en plein duel (crédibilité ≤ 3)
-  const MCRED = { ligne: 'A', plf: 'A', sondage: 'A', fuite: 'A', financement: 'A', greve: 'A', patronat: 'A', crise: 'A', matignon: 'A', censure: 'A', qag: 'A', matinale: 'C', meeting: 'A', baron: 'B', paysan: 'A', attaque: 'B', union_droites: 'B', pouvoir_local: 'A', parrainages: 'C', immigration: 'B', d_budget: 'A', d_secu: 'A', d_europe: 'A', d_pouvoir: 'A', duel_retraites: 'A', duel_institutions: 'A', duel_ecologie: 'C', duel_barrage: 'B', choc493: 'B', mediapart: 'B', donateur: 'B', plafond: 'B', fronde: 'A', police: 'C', polemiste: 'B', plafond_verre: 'B', enclaves: 'A', metropoles: 'A', fait_divers: 'A' };
+  const MCRED = { ligne: 'A', plf: 'A', sondage: 'A', fuite: 'A', financement: 'A', greve: 'A', patronat: 'A', crise: 'A', matignon: 'A', censure: 'A', qag: 'A', matinale: 'C', meeting: 'A', baron: 'B', paysan: 'A', attaque: 'B', union_droites: 'B', pouvoir_local: 'A', parrainages: 'C', immigration: 'B', d_budget: 'A', d_secu: 'A', d_europe: 'A', d_pouvoir: 'A', duel_retraites: 'A', duel_institutions: 'A', duel_ecologie: 'C', duel_barrage: 'B', choc493: 'B', mediapart: 'B', donateur: 'B', plafond: 'B', fronde: 'A', police: 'B', polemiste: 'B', plafond_verre: 'B', enclaves: 'B', metropoles: 'A', fait_divers: 'A' };
   AK.walkthrough('Défaite — crise de crédibilité', partie('marion', MCRED, [['expect', { flags: ['defaite_cred', 'partie_perdue'], noflags: ['elu'], ended: true }]], 'premier_tour'));
 })();
 
