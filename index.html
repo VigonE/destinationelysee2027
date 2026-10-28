@@ -6133,6 +6133,215 @@ AK.config({
 })(globalThis.AK);
 
 
+/* ===== game/lumiere.js ===== */
+// ============================================================================
+//  V18 — DONNÉES DE LUMIÈRE PAR SCÈNE (la passe qui les lit est dans zz-lumiere.js ; ici : AUCUN code, uniquement des données).
+//
+//  AK.LUMIERE[idScène] = {
+//    grade   : { shadow:'#hex', high:'#hex', amt:0..0.3, sat:1.0.., con:1.0.. }   étalonnage (teinte des ombres / des hautes lumières, saturation, contraste)
+//    sources : [ … ]                                                             sources de lumière (voir types ci‑dessous)
+//    bloom   : 0..1 (défaut 0.5)      halo des zones très claires
+//    ao      : false                  coupe les ombres de contact sous les meubles
+//    sheen   : 0..1                   reflets des sources sur le sol (sol ciré, carrelage mouillé…)
+//    haze    : { color:'#hex', a:0..0.3 }   brume de profondeur (le fond s'éclaircit, le premier plan reste net)
+//  }
+//  Types de sources (x, y = position en pixels logiques 640 × 264 ; color = '#hex' ; a = intensité 0..1) :
+//   lamp   { x, y, r, color, a, cone:true|false }       lampe, lustre, projecteur : halo, cône de lumière, flaque au sol, mur éclairé
+//   window { x, y, w, h, color, a, cols, dx, sun:true }  fenêtre : tache de lumière projetée au sol (avec croisillons), rais animés si sun
+//   screen { x, y, w, h, color, a }                      écran / projection : lueur diffuse devant et autour
+//   fire   { x, y, r, color, a }                         feu, braise, brasero : halo chaud qui vacille
+//   spot   { x, y, r, color, a, tx, ty }                 projecteur de scène : cône net vers (tx, ty)
+//  Conseil : une source = une vraie lumière visible dans le décor. Coordonnées : relever sur `node tools/screenshot.mjs --scene <id> --scale 1`.
+// ============================================================================
+(function (AK) {
+  const L = (AK.LUMIERE = AK.LUMIERE || {});
+
+  // ---- QG de campagne : crépuscule orangé par la fenêtre, écran de télé bleu, lampe verte sur l'étagère ----
+  L.qg = {
+    grade: { shadow: '#241a40', high: '#ffc88a', amt: 0.13, sat: 1.08, con: 1.08 }, bloom: 0.55, sheen: 0.14,
+    sources: [
+      { t: 'window', x: 22, y: 22, w: 150, h: 112, color: '#ff9a52', a: 0.55, cols: 3, dx: 0.25, sun: true },
+      { t: 'lamp', x: 250, y: 24, r: 150, color: '#ffe0a0', a: 0.45 },
+      { t: 'screen', x: 462, y: 40, w: 98, h: 62, color: '#7fb4ff', a: 0.55 },
+    ],
+  };
+  L.accueil = {
+    grade: { shadow: '#101a48', high: '#ffe6b0', amt: 0.13, sat: 1.05, con: 1.1 }, bloom: 0.5, sheen: 0.16,
+    sources: [
+      { t: 'window', x: 28, y: 26, w: 105, h: 70, color: '#7f9cff', a: 0.4, cols: 2, dx: -0.2 },
+      { t: 'screen', x: 195, y: 22, w: 250, h: 128, color: '#dce8ff', a: 0.38 },
+      { t: 'lamp', x: 318, y: 18, r: 170, color: '#ffe2a0', a: 0.4 },
+    ],
+  };
+  L.studio = {
+    grade: { shadow: '#1c0c5a', high: '#ffd8ff', amt: 0.16, sat: 1.18, con: 1.12 }, bloom: 0.8, sheen: 0.3,
+    sources: [
+      { t: 'spot', x: 110, y: 10, r: 150, color: '#cfe0ff', a: 0.5, tx: 70, ty: 215 },
+      { t: 'spot', x: 215, y: 10, r: 150, color: '#ffe0c0', a: 0.45, tx: 250, ty: 215 },
+      { t: 'spot', x: 430, y: 10, r: 150, color: '#cfe0ff', a: 0.45, tx: 390, ty: 215 },
+      { t: 'spot', x: 535, y: 10, r: 150, color: '#ffe0c0', a: 0.5, tx: 580, ty: 215 },
+      { t: 'screen', x: 40, y: 26, w: 560, h: 160, color: '#b070ff', a: 0.3 },
+      { t: 'screen', x: 24, y: 26, w: 46, h: 20, color: '#ff3030', a: 0.5 },
+    ],
+  };
+  L.salon = {
+    grade: { shadow: '#2a3a58', high: '#fff0c0', amt: 0.1, sat: 1.1, con: 1.1 }, bloom: 0.5, sheen: 0.1,
+    haze: { color: '#f4f0dc', a: 0.05 },
+    sources: [
+      { t: 'window', x: 60, y: 0, w: 520, h: 62, color: '#fff2c8', a: 0.5, cols: 8, dx: -0.15, sun: true },
+      { t: 'lamp', x: 413, y: 88, r: 80, color: '#fff0c0', a: 0.3, cone: false },
+      { t: 'lamp', x: 498, y: 86, r: 80, color: '#fff0c0', a: 0.3, cone: false },
+      { t: 'lamp', x: 150, y: 92, r: 80, color: '#fff0c0', a: 0.3, cone: false },
+    ],
+  };
+  L.assemblee = {
+    grade: { shadow: '#2c1c34', high: '#ffe8b8', amt: 0.12, sat: 1.06, con: 1.1 }, bloom: 0.55, sheen: 0.28,
+    sources: [
+      { t: 'lamp', x: 318, y: 20, r: 220, color: '#ffe0a0', a: 0.5 },
+      { t: 'window', x: 78, y: 36, w: 150, h: 150, color: '#fff0d0', a: 0.16, cols: 3, dx: 0.1 },
+      { t: 'window', x: 385, y: 36, w: 150, h: 150, color: '#fff0d0', a: 0.16, cols: 3, dx: -0.1 },
+    ],
+  };
+  L.barrage = {
+    grade: { shadow: '#2a0c30', high: '#ffa860', amt: 0.18, sat: 1.15, con: 1.14 }, bloom: 0.85, sheen: 0.32,
+    haze: { color: '#ff7a40', a: 0.1 },
+    sources: [
+      { t: 'fire', x: 335, y: 205, r: 160, color: '#ff7a30', a: 0.75 },
+      { t: 'lamp', x: 210, y: 96, r: 100, color: '#ffb050', a: 0.5 },
+      { t: 'lamp', x: 440, y: 96, r: 100, color: '#ffb050', a: 0.5 },
+    ],
+  };
+  L.bercy = {
+    grade: { shadow: '#12263a', high: '#dff0ff', amt: 0.13, sat: 1.0, con: 1.1 }, bloom: 0.5, sheen: 0.22,
+    sources: [
+      { t: 'window', x: 20, y: 18, w: 230, h: 118, color: '#7aa8e8', a: 0.45, cols: 5, dx: 0.3 },
+      { t: 'lamp', x: 380, y: 24, r: 160, color: '#e8ffd0', a: 0.45 },
+    ],
+  };
+  L.bourse_travail = {
+    grade: { shadow: '#2a1020', high: '#ffd0a0', amt: 0.14, sat: 1.1, con: 1.1 }, bloom: 0.5, sheen: 0.12,
+    sources: [
+      { t: 'window', x: 28, y: 22, w: 70, h: 92, color: '#a0b8ff', a: 0.35, cols: 2, dx: 0.3 },
+      { t: 'lamp', x: 320, y: 24, r: 180, color: '#ffd8a8', a: 0.45 },
+    ],
+  };
+  L.bureau_vote = {
+    grade: { shadow: '#26382a', high: '#fff4d0', amt: 0.1, sat: 1.05, con: 1.08 }, bloom: 0.5, sheen: 0.12,
+    sources: [
+      { t: 'window', x: 36, y: 18, w: 100, h: 100, color: '#fff6d8', a: 0.5, cols: 2, dx: 0.2, sun: true },
+      { t: 'window', x: 178, y: 18, w: 98, h: 100, color: '#fff6d8', a: 0.5, cols: 2, dx: 0.2, sun: true },
+      { t: 'lamp', x: 160, y: 24, r: 150, color: '#fff2c8', a: 0.4 },
+      { t: 'lamp', x: 480, y: 24, r: 150, color: '#fff2c8', a: 0.4 },
+    ],
+  };
+  L.cafe_commerce = {
+    grade: { shadow: '#38200c', high: '#ffd090', amt: 0.16, sat: 1.12, con: 1.1 }, bloom: 0.7, sheen: 0.3,
+    sources: [
+      { t: 'window', x: 28, y: 20, w: 150, h: 64, color: '#ffe0a0', a: 0.35, cols: 3, dx: 0.2 },
+      { t: 'lamp', x: 200, y: 24, r: 150, color: '#ffc880', a: 0.5 },
+      { t: 'lamp', x: 460, y: 24, r: 150, color: '#ffc880', a: 0.5 },
+      { t: 'screen', x: 230, y: 20, w: 195, h: 72, color: '#ffd890', a: 0.3 },
+      { t: 'screen', x: 508, y: 98, w: 52, h: 90, color: '#ff7a60', a: 0.45 },
+    ],
+  };
+  L.cnccfp = {
+    grade: { shadow: '#1a2216', high: '#fff0cc', amt: 0.11, sat: 1.0, con: 1.1 }, bloom: 0.45, sheen: 0.14,
+    sources: [{ t: 'lamp', x: 300, y: 24, r: 190, color: '#ffeab8', a: 0.5 }],
+  };
+  L.commission_finances = {
+    grade: { shadow: '#1a2418', high: '#fff0cc', amt: 0.11, sat: 1.04, con: 1.1 }, bloom: 0.5, sheen: 0.24,
+    sources: [
+      { t: 'window', x: 90, y: 32, w: 98, h: 112, color: '#cfe0ff', a: 0.4, cols: 2, dx: 0.2 },
+      { t: 'screen', x: 250, y: 38, w: 140, h: 58, color: '#90ffb0', a: 0.28 },
+      { t: 'lamp', x: 320, y: 10, r: 210, color: '#ffe8b0', a: 0.5 },
+    ],
+  };
+  L.conseil_constit = {
+    grade: { shadow: '#1c2440', high: '#ffe8c0', amt: 0.13, sat: 1.06, con: 1.12 }, bloom: 0.6, sheen: 0.26,
+    sources: [
+      { t: 'window', x: 70, y: 28, w: 145, h: 125, color: '#dfeaff', a: 0.42, cols: 3, dx: 0.25, sun: true },
+      { t: 'fire', x: 300, y: 172, r: 110, color: '#ff9a4a', a: 0.6 },
+      { t: 'lamp', x: 320, y: 12, r: 200, color: '#ffe8b0', a: 0.45 },
+    ],
+  };
+  L.coulisses = {
+    grade: { shadow: '#12081c', high: '#ffd8c0', amt: 0.14, sat: 1.1, con: 1.15 }, bloom: 0.7, sheen: 0.35, ao: false,
+    sources: [
+      { t: 'spot', x: 155, y: 14, r: 120, color: '#ffe8c0', a: 0.5, tx: 155, ty: 215 },
+      { t: 'spot', x: 265, y: 14, r: 120, color: '#ffe8c0', a: 0.5, tx: 265, ty: 215 },
+      { t: 'spot', x: 370, y: 14, r: 120, color: '#ffe8c0', a: 0.5, tx: 370, ty: 215 },
+      { t: 'spot', x: 480, y: 14, r: 120, color: '#ffe8c0', a: 0.5, tx: 480, ty: 215 },
+    ],
+  };
+  L.cour_matignon = {
+    grade: { shadow: '#14203a', high: '#ffd890', amt: 0.15, sat: 1.1, con: 1.12 }, bloom: 0.75, sheen: 0.3,
+    haze: { color: '#8aa0c8', a: 0.1 },
+    sources: [
+      { t: 'lamp', x: 168, y: 116, r: 120, color: '#ffc060', a: 0.6, cone: false },
+      { t: 'lamp', x: 420, y: 112, r: 120, color: '#ffc060', a: 0.6, cone: false },
+      { t: 'screen', x: 285, y: 80, w: 70, h: 110, color: '#6a9cff', a: 0.3 },
+    ],
+  };
+  L.elysee = {
+    grade: { shadow: '#34261a', high: '#fff0c0', amt: 0.11, sat: 1.06, con: 1.1 }, bloom: 0.6, sheen: 0.3,
+    sources: [
+      { t: 'window', x: 55, y: 32, w: 110, h: 105, color: '#fff4d0', a: 0.45, cols: 3, dx: 0.3, sun: true },
+      { t: 'window', x: 510, y: 32, w: 110, h: 105, color: '#fff4d0', a: 0.45, cols: 3, dx: -0.3, sun: true },
+      { t: 'fire', x: 330, y: 166, r: 90, color: '#ff9a4a', a: 0.5 },
+      { t: 'lamp', x: 320, y: 20, r: 220, color: '#ffe0a0', a: 0.45 },
+    ],
+  };
+  L.hemicycle = {
+    grade: { shadow: '#2a1a10', high: '#ffe8b8', amt: 0.13, sat: 1.06, con: 1.12 }, bloom: 0.6, sheen: 0.22,
+    sources: [{ t: 'lamp', x: 320, y: 8, r: 270, color: '#ffe8b8', a: 0.4 }],
+  };
+  L.mairie = {
+    grade: { shadow: '#2a2214', high: '#fff0c8', amt: 0.11, sat: 1.04, con: 1.1 }, bloom: 0.5, sheen: 0.18,
+    sources: [
+      { t: 'window', x: 35, y: 24, w: 70, h: 95, color: '#b0c4ec', a: 0.35, cols: 2, dx: 0.3 },
+      { t: 'window', x: 520, y: 24, w: 70, h: 95, color: '#b0c4ec', a: 0.35, cols: 2, dx: -0.3 },
+      { t: 'lamp', x: 320, y: 14, r: 190, color: '#fff0c8', a: 0.45 },
+    ],
+  };
+  L.maison_gauche = {
+    grade: { shadow: '#181430', high: '#ffd8b0', amt: 0.15, sat: 1.12, con: 1.12 }, bloom: 0.55, sheen: 0.14,
+    sources: [{ t: 'lamp', x: 320, y: 24, r: 200, color: '#ffe8c0', a: 0.45 }],
+  };
+  L.matignon = {
+    grade: { shadow: '#34261a', high: '#fff0c0', amt: 0.11, sat: 1.06, con: 1.1 }, bloom: 0.6, sheen: 0.3,
+    sources: [
+      { t: 'window', x: 75, y: 32, w: 150, h: 125, color: '#fff4d0', a: 0.45, cols: 3, dx: 0.3, sun: true },
+      { t: 'fire', x: 325, y: 162, r: 90, color: '#ff9a4a', a: 0.5 },
+      { t: 'lamp', x: 320, y: 20, r: 210, color: '#ffe0a0', a: 0.45 },
+    ],
+  };
+  L.meeting = {
+    grade: { shadow: '#1a0e34', high: '#e8d8ff', amt: 0.17, sat: 1.18, con: 1.14 }, bloom: 0.85, sheen: 0.3,
+    sources: [
+      { t: 'screen', x: 365, y: 25, w: 265, h: 120, color: '#9a70ff', a: 0.42 },
+      { t: 'spot', x: 160, y: 12, r: 140, color: '#ffe0b0', a: 0.45, tx: 130, ty: 215 },
+      { t: 'spot', x: 285, y: 12, r: 140, color: '#cfe0ff', a: 0.45, tx: 330, ty: 215 },
+    ],
+  };
+  L.palais_royal = {
+    grade: { shadow: '#18223c', high: '#ffd890', amt: 0.15, sat: 1.08, con: 1.12 }, bloom: 0.7, sheen: 0.24,
+    haze: { color: '#b0b8d0', a: 0.12 },
+    sources: [
+      { t: 'lamp', x: 40, y: 122, r: 120, color: '#ffc060', a: 0.6, cone: false },
+      { t: 'lamp', x: 615, y: 122, r: 120, color: '#ffc060', a: 0.6, cone: false },
+      { t: 'window', x: 300, y: 80, w: 90, h: 120, color: '#ffd890', a: 0.35, cols: 2, dx: 0 },
+    ],
+  };
+  L.permanence = {
+    grade: { shadow: '#2a2030', high: '#ffecc0', amt: 0.12, sat: 1.06, con: 1.1 }, bloom: 0.55, sheen: 0.16,
+    sources: [
+      { t: 'window', x: 205, y: 28, w: 195, h: 118, color: '#fff0c0', a: 0.38, cols: 3, dx: 0.2, sun: true },
+      { t: 'lamp', x: 300, y: 24, r: 180, color: '#fff0cc', a: 0.42 },
+    ],
+  };
+})(globalThis.AK);
+
+
 /* ===== game/plateau.js ===== */
 // Plateau du débat : place les rivaux sur scène (premier tour : les 3 principaux concurrents encore en course ; second tour : l'adversaire).
 (function (AK) {
@@ -7320,6 +7529,231 @@ AK.config({
     c.beginPath(); c.ellipse(cx, by - h, w * 0.16, 1.2, 0, 0, 6.3); c.fillStyle = 'rgba(40,40,44,.55)'; c.fill();
     return this;
   };
+})(globalThis.AK);
+
+
+/* ===== game/zz-lumiere.js ===== */
+// ============================================================================
+//  V18 — PASSE DE LUMIÈRE ET DE FINESSE (aucun code moteur : on enrobe SceneRenderer.finishBg et .setScene)
+//  Lit AK.LUMIERE (données : lumiere.js) et ajoute, sur chaque décor cuit une seule fois :
+//   1. SOURCES : halo, cône de lumière (lampes/projecteurs), tache de soleil projetée au sol avec croisillons (fenêtres),
+//      lueur d'écran, feu ; mur éclairé autour de la lampe, flaque de lumière et reflets sur le sol ;
+//   2. OCCLUSION : ombre à la jonction mur/sol et ombres de contact sous les meubles (zones cliquables posées au sol) ;
+//   3. BRUME de profondeur (le fond s'adoucit, le premier plan reste net) ;
+//   4. BLOOM : les zones très claires débordent légèrement (lampes, écrans, dorures) ;
+//   5. ÉTALONNAGE : teinte des ombres / des hautes lumières, contraste, saturation propres à chaque ambiance.
+//  Et, pour l'animation (une seule fois par scène) : lampes qui respirent, feux qui vacillent, écrans qui pulsent, rais de soleil et
+//  poussières visibles dans les rais ; chaque source déclarée éclaire aussi les personnages (lighting.lights).
+//  Réglages : ?lumiere=0 dans l'URL (ou scene.lumiere = false) désactive tout ; AK.LUM.force règle l'intensité (0–1.5).
+//  Ordre de chargement : avant zz-peinture.js → le clair‑obscur et le vernis s'appliquent par‑dessus. Logique et coordonnées inchangées.
+// ============================================================================
+(function (AK) {
+  'use strict';
+  if (!AK.SceneRenderer) return;
+  const U = AK.util; const A = U.alpha;
+  let actif = true;
+  try { if (typeof location !== 'undefined' && /[?&]lumiere=0/.test(location.search)) actif = false; } catch (e) { /* ignoré */ }
+  try { if (typeof process !== 'undefined' && process.env && process.env.AK_LUMIERE === '0') actif = false; } catch (e) { /* ignoré */ }
+  const REG = (AK.LUM = { actif, force: 1, skip: {} });
+  try { if (typeof process !== 'undefined' && process.env && process.env.AK_LSKIP) process.env.AK_LSKIP.split(',').forEach((k) => (REG.skip[k] = 1)); } catch (e) { /* ignoré */ }
+  const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+  const hex = (h) => { h = String(h || '#808080').replace('#', ''); if (h.length === 3) h = h.replace(/./g, '$&$&'); const n = parseInt(h, 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+
+  let K = 1;                                   // intensité effective de la passe (réduite sur les décors déjà très clairs)
+  const floorTop = (sc) => { let m = 1e9; for (const a of (sc.walk && sc.walk.areas) || []) for (const p of a) if (p[1] < m) m = p[1]; return m === 1e9 ? 190 : m; };
+
+  // dessine dans un petit canevas puis l'étale (adoucit) en composition additive
+  function soft(rd, bg, fn, comp, alpha, s) {
+    s = s || 4; const W = rd.W, H = rd.H; const cv = AK.platform.createCanvas(Math.ceil(W / s), Math.ceil(H / s)); const x = cv.getContext('2d');
+    x.scale(1 / s, 1 / s); fn(x); const c = bg.getContext('2d');
+    c.save(); c.setTransform(1 / rd.p, 0, 0, 1 / rd.p, 0, 0); c.imageSmoothingEnabled = true; c.globalCompositeOperation = comp || 'lighter'; c.globalAlpha = alpha === undefined ? 1 : alpha;
+    c.drawImage(cv, 0, 0, W, H); c.restore();
+  }
+  const radial = (c, x, y, r, stops) => { const g = c.createRadialGradient(x, y, 0, x, y, r); stops.forEach(([t, col]) => g.addColorStop(t, col)); return g; };
+  // ellipse lumineuse aplatie (flaque au sol)
+  const pool = (c, x, y, rx, ry, col, a) => { c.save(); c.translate(x, y); c.scale(1, ry / rx); c.fillStyle = radial(c, 0, 0, rx, [[0, A(col, a)], [0.55, A(col, a * 0.4)], [1, A(col, 0)]]); c.fillRect(-rx, -rx, rx * 2, rx * 2); c.restore(); };
+
+  // ---------------------------------------------------------------- les sources ----
+  function source(rd, bg, s, ft, L) {
+    const W = rd.W, H = rd.H; const a = (s.a === undefined ? 0.4 : s.a) * K; const col = s.color || '#ffe0a0'; const c = bg.getContext('2d');
+    const tr = () => { c.setTransform(1 / rd.p, 0, 0, 1 / rd.p, 0, 0); };
+    c.save(); tr(); c.globalCompositeOperation = 'screen';
+    if (s.t === 'lamp' || s.t === 'fire') {
+      const r = s.r || 120;
+      // noyau chaud
+      c.fillStyle = radial(c, s.x, s.y, r * 0.42, [[0, A(col, Math.min(0.2, a * 0.36))], [0.4, A(col, a * 0.12)], [1, A(col, 0)]]); c.fillRect(s.x - r, s.y - r, r * 2, r * 2);
+      // mur éclairé autour de la lampe (limité au-dessus du sol)
+      c.save(); c.beginPath(); c.rect(0, 0, W, ft + 2); c.clip();
+      c.fillStyle = radial(c, s.x, s.y + r * 0.25, r * 0.95, [[0, A(col, a * 0.1)], [1, A(col, 0)]]); c.fillRect(s.x - r, s.y - r, r * 2, r * 2.2); c.restore();
+      c.restore();
+      if (s.t === 'lamp' && s.cone !== false) soft(rd, bg, (x) => {
+        const fy = ft + (H - ft) * 0.4; const wd = r * 0.55; const g = x.createLinearGradient(0, s.y, 0, fy); g.addColorStop(0, A(col, a * 0.26)); g.addColorStop(1, A(col, 0));
+        x.fillStyle = g; x.beginPath(); x.moveTo(s.x - 5, s.y + 3); x.lineTo(s.x + 5, s.y + 3); x.lineTo(s.x + wd, fy); x.lineTo(s.x - wd, fy); x.closePath(); x.fill();
+      }, 'screen', 1, 3);
+      // flaque au sol + reflets
+      soft(rd, bg, (x) => { pool(x, s.x, s.t === 'fire' ? s.y + 14 : ft + (H - ft) * 0.45, r * (s.t === 'fire' ? 1.05 : 0.95), r * (s.t === 'fire' ? 0.26 : 0.2), col, a * (s.t === 'fire' ? 0.42 : 0.24)); }, 'screen', 1, 4);
+      return;
+    }
+    if (s.t === 'spot') {
+      c.restore(); const r = s.r || 120; const tx = s.tx === undefined ? s.x : s.tx, ty = s.ty === undefined ? ft + 20 : s.ty;
+      soft(rd, bg, (x) => {
+        const g = x.createLinearGradient(s.x, s.y, tx, ty); g.addColorStop(0, A(col, a * 0.34)); g.addColorStop(0.8, A(col, a * 0.1)); g.addColorStop(1, A(col, a * 0.05));
+        const wd = r * 0.42; x.fillStyle = g; x.beginPath(); x.moveTo(s.x - 4, s.y); x.lineTo(s.x + 4, s.y); x.lineTo(tx + wd, ty); x.lineTo(tx - wd, ty); x.closePath(); x.fill();
+        x.fillStyle = radial(x, s.x, s.y, r * 0.2, [[0, A(col, Math.min(0.3, a * 0.6))], [1, A(col, 0)]]); x.fillRect(s.x - r, s.y - r, r * 2, r * 2);
+        pool(x, tx, ty, r * 0.7, r * 0.17, col, a * 0.42);
+      }, 'screen', 1, 3);
+      return;
+    }
+    if (s.t === 'screen') {
+      const cx = s.x + s.w / 2, cy = s.y + s.h / 2, R = Math.max(s.w, s.h) * 0.95;
+      c.save(); c.translate(cx, cy); c.scale(s.w / R * 1.25, s.h / R * 1.25); c.fillStyle = radial(c, 0, 0, R, [[0, A(col, a * 0.34)], [0.6, A(col, a * 0.1)], [1, A(col, 0)]]); c.fillRect(-R, -R, R * 2, R * 2); c.restore();
+      c.fillStyle = A(col, a * 0.14); c.fillRect(s.x, s.y, s.w, s.h);                                 // la surface elle-même brille
+      c.restore();
+      if (s.y + s.h < ft + 10) soft(rd, bg, (x) => { pool(x, cx, ft + (H - ft) * 0.5, s.w * 0.7, s.w * 0.14, col, a * 0.16); }, 'screen', 1, 4);
+      return;
+    }
+    if (s.t === 'window') {
+      const cols = s.cols || 2; const dx = s.dx === undefined ? 0.2 : s.dx; const sun = !!s.sun; const kk = a * (sun ? 1 : 0.7);
+      // lueur du châssis sur le mur
+      const R = Math.max(s.w, s.h) * 0.9; c.save(); c.translate(s.x + s.w / 2, s.y + s.h / 2); c.scale(s.w / R * 1.3, s.h / R * 1.15);
+      c.fillStyle = radial(c, 0, 0, R, [[0, A(col, kk * 0.11)], [1, A(col, 0)]]); c.fillRect(-R, -R, R * 2, R * 2); c.restore();
+      c.restore();
+      // tache de lumière au sol : une bande par vitre, décalée selon l'angle (dx), plus floue en s'éloignant
+      soft(rd, bg, (x) => {
+        const dist = H - ft - 4; const sx = dx * dist * 1.1;
+        for (let i = 0; i < cols; i++) {
+          const x0 = s.x + s.w * i / cols + s.w * 0.04, x1 = s.x + s.w * (i + 1) / cols - s.w * 0.04;
+          const g = x.createLinearGradient(0, ft + 3, 0, H - 4); g.addColorStop(0, A(col, kk * 0.34)); g.addColorStop(1, A(col, kk * 0.06));
+          x.fillStyle = g; x.beginPath(); x.moveTo(x0, ft + 3); x.lineTo(x1, ft + 3); x.lineTo(x1 + sx + 10, H - 4); x.lineTo(x0 + sx - 10, H - 4); x.closePath(); x.fill();
+        }
+      }, 'screen', 1, 3);
+      return;
+    }
+    c.restore();
+  }
+
+  // ---------------------------------------------------------------- occlusion ambiante ----
+  function occlusion(rd, bg, sc, ft, lum) {
+    const W = rd.W, H = rd.H; const k = REG.force; const c = bg.getContext('2d'); c.save(); c.setTransform(1 / rd.p, 0, 0, 1 / rd.p, 0, 0);
+    // jonction mur / sol : le coin s'assombrit
+    let g = c.createLinearGradient(0, ft - 14, 0, ft); g.addColorStop(0, 'rgba(8,4,12,0)'); g.addColorStop(1, 'rgba(8,4,12,' + (0.2 * k).toFixed(3) + ')'); c.fillStyle = g; c.fillRect(0, ft - 14, W, 14);
+    g = c.createLinearGradient(0, ft, 0, ft + 10); g.addColorStop(0, 'rgba(8,4,12,' + (0.16 * k).toFixed(3) + ')'); g.addColorStop(1, 'rgba(8,4,12,0)'); c.fillStyle = g; c.fillRect(0, ft, W, 10);
+    // coins du plafond
+    g = c.createLinearGradient(0, 0, 0, 30); g.addColorStop(0, 'rgba(8,4,12,' + (0.2 * k).toFixed(3) + ')'); g.addColorStop(1, 'rgba(8,4,12,0)'); c.fillStyle = g; c.fillRect(0, 0, W, 30);
+    if (lum.ao !== false) {
+      // ombres de contact sous les objets posés au sol (zones cliquables avec point d'accès)
+      for (const h of sc.hotspots || []) {
+        if (h.far || h.exit || !h.walkTo || !h.rect || h.id === 'voiture' || h.noAo) continue;
+        const [x, y, w, hh] = h.rect; const by = y + hh; if (by < ft + 6 || by > H - 8 || w < 22 || w > 240 || hh < 22) continue;
+        const cx = x + w / 2, rx = w * 0.56, ry = clamp(hh * 0.05, 2.5, 6);
+        c.save(); c.translate(cx, by - 1); c.scale(1, ry / rx); c.fillStyle = radial(c, 0, 0, rx, [[0, 'rgba(6,3,10,' + (0.26 * k).toFixed(3) + ')'], [0.7, 'rgba(6,3,10,' + (0.12 * k).toFixed(3) + ')'], [1, 'rgba(6,3,10,0)']]); c.fillRect(-rx, -rx, rx * 2, rx * 2); c.restore();
+      }
+    }
+    c.restore();
+  }
+
+  // ---------------------------------------------------------------- bloom ----
+  function bloom(rd, bg, amt) {
+    const W = rd.W, H = rd.H; const s = 4; const cw = Math.ceil(W / s), ch = Math.ceil(H / s);
+    const a = AK.platform.createCanvas(cw, ch); const ax = a.getContext('2d'); ax.imageSmoothingEnabled = true; ax.drawImage(bg, 0, 0, cw, ch);
+    const id = ax.getImageData(0, 0, cw, ch); const d = id.data;
+    for (let i = 0; i < d.length; i += 4) { const l = (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) / 255; const t = clamp((l - 0.7) * 3, 0, 1); d[i] *= t; d[i + 1] *= t; d[i + 2] *= t; d[i + 3] = 255; }
+    ax.putImageData(id, 0, 0);
+    const b = AK.platform.createCanvas(Math.ceil(cw / 3), Math.ceil(ch / 3)); const bx = b.getContext('2d'); bx.imageSmoothingEnabled = true; bx.drawImage(a, 0, 0, b.width, b.height);
+    const c = bg.getContext('2d'); c.save(); c.setTransform(1 / rd.p, 0, 0, 1 / rd.p, 0, 0); c.imageSmoothingEnabled = true; c.globalCompositeOperation = 'lighter';
+    c.globalAlpha = clamp(amt * 0.34 * K, 0, 0.9); c.drawImage(b, 0, 0, W, H); c.globalAlpha = clamp(amt * 0.12 * K, 0, 0.6); c.drawImage(a, 0, 0, W, H); c.restore();
+  }
+
+  // ---------------------------------------------------------------- étalonnage ----
+  function grade(rd, bg, g) {
+    const c = bg.getContext('2d'); const w = bg.width, h = bg.height; const id = c.getImageData(0, 0, w, h); const d = id.data;
+    const sh = hex(g.shadow), hi = hex(g.high); const amt = (g.amt === undefined ? 0.1 : g.amt) * REG.force * (0.5 + 0.5 * K); const sat = 1 + ((g.sat === undefined ? 1.05 : g.sat) - 1) * REG.force, con = 1 + ((g.con === undefined ? 1.06 : g.con) - 1) * REG.force;
+    for (let i = 0; i < d.length; i += 4) {
+      let r = d[i], gg = d[i + 1], b = d[i + 2]; const l = (0.299 * r + 0.587 * gg + 0.114 * b) / 255;
+      const ws = Math.pow(clamp((0.5 - l) * 2, 0, 1), 1.4) * amt * 1.6, wh = Math.pow(clamp((l - 0.45) * 1.8, 0, 1), 1.4) * amt * 1.3;
+      r += (sh[0] - r) * ws + (hi[0] - r) * wh; gg += (sh[1] - gg) * ws + (hi[1] - gg) * wh; b += (sh[2] - b) * ws + (hi[2] - b) * wh;
+      const y = 0.299 * r + 0.587 * gg + 0.114 * b; r = y + (r - y) * sat; gg = y + (gg - y) * sat; b = y + (b - y) * sat;
+      r = (r - 118) * con + 118; gg = (gg - 118) * con + 118; b = (b - 118) * con + 118;
+      d[i] = r < 0 ? 0 : r > 255 ? 255 : r; d[i + 1] = gg < 0 ? 0 : gg > 255 ? 255 : gg; d[i + 2] = b < 0 ? 0 : b > 255 ? 255 : b;
+    }
+    c.putImageData(id, 0, 0);
+  }
+
+  function meanLuma(bg) {
+    const cv = AK.platform.createCanvas(32, 16); const x = cv.getContext('2d'); x.imageSmoothingEnabled = true; x.drawImage(bg, 0, 0, 32, 16);
+    const d = x.getImageData(0, 0, 32, 16).data; let t = 0; for (let i = 0; i < d.length; i += 4) t += (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) / 255; return t / (d.length / 4);
+  }
+
+  // ---------------------------------------------------------------- finesse : contraste local (« clarté ») ----
+  // masque flou : on retire le flou à l'image et on renforce la différence → les détails fins (livres, textes, moulures) ressortent
+  function clarity(rd, bg, amt) {
+    const w = bg.width, h = bg.height; const sm = AK.platform.createCanvas(Math.ceil(w / 4), Math.ceil(h / 4)); const sx = sm.getContext('2d'); sx.imageSmoothingEnabled = true; sx.drawImage(bg, 0, 0, sm.width, sm.height);
+    const bl = AK.platform.createCanvas(w, h); const bx = bl.getContext('2d'); bx.imageSmoothingEnabled = true; bx.drawImage(sm, 0, 0, w, h);
+    const c = bg.getContext('2d'); const id = c.getImageData(0, 0, w, h); const d = id.data; const b = bx.getImageData(0, 0, w, h).data; const k = amt * REG.force;
+    for (let i = 0; i < d.length; i += 4) for (let j = 0; j < 3; j++) { const v = d[i + j] + (d[i + j] - b[i + j]) * k; d[i + j] = v < 0 ? 0 : v > 255 ? 255 : v; }
+    c.putImageData(id, 0, 0);
+  }
+
+  // ---------------------------------------------------------------- finishBg : tout est cuit ici ----
+  const proto = AK.SceneRenderer.prototype; const finish0 = proto.finishBg;
+  proto.finishBg = function (bg, scene) {
+    finish0.call(this, bg, scene);
+    const lum = AK.LUMIERE && AK.LUMIERE[scene.id];
+    if (!REG.actif || scene.lumiere === false || !lum) return;
+    try {
+      const ft = floorTop(scene); const W = this.W, H = this.H;
+      K = REG.force * clamp(1.32 - 1.5 * meanLuma(bg), 0.3, 1);
+      if (!REG.skip.src) for (const s of lum.sources || []) source(this, bg, s, ft, lum);
+      if (lum.haze) { const c = bg.getContext('2d'); c.save(); c.setTransform(1 / this.p, 0, 0, 1 / this.p, 0, 0); const g = c.createLinearGradient(0, 0, 0, ft); g.addColorStop(0, A(lum.haze.color, (lum.haze.a || 0.1) * REG.force)); g.addColorStop(1, A(lum.haze.color, 0)); c.fillStyle = g; c.fillRect(0, 0, W, ft); c.restore(); }
+      // reflets des sources sur un sol brillant
+      if (lum.sheen) soft(this, bg, (x) => {
+        for (const s of lum.sources || []) {
+          if (s.t === 'screen') continue; const cx = s.t === 'window' ? s.x + s.w / 2 : s.x; const wd = s.t === 'window' ? s.w * 0.3 : (s.r || 100) * 0.1; const a = (s.a === undefined ? 0.4 : s.a) * lum.sheen * 0.5;
+          const g = x.createLinearGradient(0, ft + 4, 0, H); g.addColorStop(0, A(s.color || '#fff', a)); g.addColorStop(1, A(s.color || '#fff', 0)); x.fillStyle = g; x.fillRect(cx - wd, ft + 4, wd * 2, H - ft);
+        }
+      }, 'screen', 1, 3);
+      occlusion(this, bg, scene, ft, lum);
+      if (lum.bloom !== 0 && !REG.skip.bloom) bloom(this, bg, lum.bloom === undefined ? 0.5 : lum.bloom);
+      if (lum.grade && !REG.skip.grade) grade(this, bg, lum.grade);
+      if (lum.clarity !== 0 && !REG.skip.clarity) clarity(this, bg, lum.clarity === undefined ? 0.45 : lum.clarity);
+    } catch (e) { /* facultatif : ne jamais bloquer le rendu */ if (typeof console !== 'undefined' && REG.debug) console.warn('lumiere', scene.id, e); }
+  };
+
+  // ---------------------------------------------------------------- animation et éclairage des personnages ----
+  const set0 = proto.setScene;
+  proto.setScene = function (id) {
+    const sc = this.game.reg.scenes[id];
+    try { prepare(sc); } catch (e) { /* facultatif */ }
+    const r = set0.call(this, id);        // le décor est cuit ici : les lumières ajoutées ensuite n'ajoutent donc pas de halo en double au fond
+    try { eclairerPersonnages(sc); } catch (e) { /* facultatif */ }
+    return r;
+  };
+  function eclairerPersonnages(sc) {
+    const lum = AK.LUMIERE && AK.LUMIERE[sc.id]; if (!REG.actif || !lum || sc._lumL || sc.lumiere === false) return; sc._lumL = true;
+    sc.lighting = sc.lighting || {}; const L = sc.lighting; L.lights = L.lights || [];
+    for (const s of lum.sources || []) {
+      const cx = s.w ? s.x + s.w / 2 : s.x, cy = s.h ? s.y + s.h / 2 : s.y, r = s.r || Math.max(s.w || 0, s.h || 0) * 0.9 || 100;
+      if (!L.lights.some((l) => Math.hypot(l.x - cx, l.y - cy) < 50)) L.lights.push({ x: cx, y: cy, r, color: s.color || '#ffe0a0', alpha: (s.a === undefined ? 0.4 : s.a) * 0.5 });
+    }
+  }
+  function prepare(sc) {
+    const lum = AK.LUMIERE && AK.LUMIERE[sc.id]; if (!REG.actif || !lum || sc._lumOK || sc.lumiere === false) return; sc._lumOK = true;
+    sc.fx = sc.fx || []; sc.lighting = sc.lighting || {}; const L = sc.lighting; L.lights = L.lights || []; const ft = floorTop(sc);
+    const haveShafts = sc.fx.some((f) => f.type === 'shafts');
+    for (const s of lum.sources || []) {
+      const a = s.a === undefined ? 0.4 : s.a; const col = s.color || '#ffe0a0';
+      const cx = s.w ? s.x + s.w / 2 : s.x, cy = s.h ? s.y + s.h / 2 : s.y, r = s.r || Math.max(s.w || 0, s.h || 0) * 0.9 || 100;
+      if (s.t === 'lamp') sc.fx.push({ type: 'light', x: s.x, y: s.y + 2, r: r * 0.4, color: col, alpha: a * 0.09, flicker: 0.05 });
+      else if (s.t === 'fire') sc.fx.push({ type: 'light', x: s.x, y: s.y, r: r * 0.8, color: col, alpha: a * 0.4, flicker: 0.3, squash: 0.9 });
+      else if (s.t === 'screen') sc.fx.push({ type: 'light', x: cx, y: cy, r: Math.max(s.w, s.h) * 0.8, color: col, alpha: a * 0.1, flicker: 0.1, squash: 0.7 });
+      else if (s.t === 'spot') sc.fx.push({ type: 'light', x: s.x, y: s.y + 2, r: (s.r || 100) * 0.25, color: col, alpha: a * 0.18, flicker: 0.03 });
+      else if (s.t === 'window' && s.sun) {
+        const dx = (s.dx === undefined ? 0.2 : s.dx) * 140;
+        if (!haveShafts) sc.fx.push({ type: 'shafts', color: col, alpha: a * 0.2, beams: [{ top: [s.x + s.w * 0.1, s.x + s.w * 0.9, s.y + s.h * 0.2], bottom: [s.x + s.w * 0.1 + dx, s.x + s.w * 0.9 + dx + 24, ft + 34] }] });
+        sc.fx.push({ type: 'dust', n: 18, alpha: 0.9, color: '#fff4d0', lit: [[Math.min(s.x, s.x + dx), s.y, s.w + Math.abs(dx) + 20, ft + 34 - s.y]], drift: 3, fall: 1 });
+      }
+    }
+  }
 })(globalThis.AK);
 
 
