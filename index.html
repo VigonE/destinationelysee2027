@@ -3947,6 +3947,7 @@ function createMusic(a, out) {
   const INK = '#1c1424'; const TAU = 6.2832;
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
   const lerp = (a, b, t) => a + (b - a) * t;
+  const clampN = (v, a, b) => (v < a ? a : v > b ? b : v);
   const lin = (c, x0, y0, x1, y1, stops) => { const g = c.createLinearGradient(x0, y0, x1, y1); stops.forEach(([t, col]) => g.addColorStop(t, col)); return g; };
 
   // chemin lisse (quadratiques entre milieux de segments)
@@ -3981,6 +3982,23 @@ function createMusic(a, out) {
     const a = (l1 * l1 - l2 * l2 + d * d) / (2 * d); const h = Math.sqrt(Math.max(0, l1 * l1 - a * a));
     return { x: ax + dx * a / d + (-dy / d) * h * bend, y: ay + dy * a / d + (dx / d) * h * bend, bx, by };
   }
+
+  // ---- mouvement lissé (V16) : démarrage / arrêt progressifs, inertie des cheveux, par personnage ----------------
+  //  p.mv (0..1) peut forcer le poids de marche (planches-contact, tests) ; sinon il est lissé dans le temps réel.
+  const MOT = {};
+  const nowMs = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  function motion(ch, p) {
+    if (p.mv !== undefined) return { m: p.mv, dm: 0 };
+    const id = (ch && ch.id) || '?'; const tgt = p.moving ? 1 : 0; const now = nowMs(); let s = MOT[id];
+    if (!s) s = MOT[id] = { m: tgt, dm: 0, t: now };
+    const dt = (now - s.t) / 1000;
+    if (dt > 0.004) {
+      const d = Math.min(dt, 0.1); const rate = tgt > s.m ? 7 : 9; const nm = s.m + (tgt - s.m) * (1 - Math.exp(-rate * d));
+      s.dm += ((nm - s.m) / d - s.dm) * (1 - Math.exp(-14 * d)); s.m = nm; s.t = now;
+    }
+    return s;
+  }
+  const sstep0 = (x) => { x = x < 0 ? 0 : x > 1 ? 1 : x; return x * x * (3 - 2 * x); };
 
   // ---- cheveux : volumes à reflets, par vue ------------------------------------------------------------------
   // layer 'back' : derrière la tête ; 'front' : au‑dessus. Repère tête : origine au centre, hauteur ±8.75.
@@ -4036,8 +4054,12 @@ function createMusic(a, out) {
   // ---- tête : crâne, visage, traits ----------------------------------------------------------------------
   function head(c, L, p, view, F, k) {
     const skin = L.skin || '#f0c8a4', skinD = S(skin, -0.2), skinL = S(skin, 0.1); const hairC = L.hair || '#3a2a20'; const eyeC = L.eyes || '#3a5470';
-    const blink = p.blink > 0.5; const talk = p.talk > 0 ? Math.abs(Math.sin((p.idleT || 0) * 13)) * p.talk : 0; const idle = p.idleT || 0;
-    hair(c, L.hairStyle || 'short', hairC, view, L.gray, 'back');
+    const blink = p.blink > 0.5; const half = !blink && p.blink > 0.14; const idle = p.idleT || 0;
+    const talk = p.talk > 0 ? Math.pow(Math.abs(Math.sin(idle * 10.5 + 0.9 * Math.sin(idle * 2.3))), 0.8) * (0.55 + 0.45 * Math.sin(idle * 3.7)) * sstep0((Math.sin(idle * 1.35 + 1.7) + 0.55) / 0.5) * p.talk : 0;
+    const wsc = 1 - 0.3 * Math.max(0, Math.sin(idle * 4.1)); const bl = talk * 0.6;                           // bouche : « é » large ou « o » arrondi
+    const sac = (sd) => Math.sin(idle * 1.9 + sd * 2.1) * 0.1 + (Math.sin(idle * 0.43 + sd) > 0.94 ? 0.28 : 0);   // micro‑saccades du regard
+    const sway = p._sway || 0;
+    c.save(); c.translate(0, -7); c.rotate(sway); c.translate(0, 7); hair(c, L.hairStyle || 'short', hairC, view, L.gray, 'back'); c.restore();
     const brow = (x0, y0, x1, y1, w) => { c.beginPath(); c.moveTo(x0, y0); c.quadraticCurveTo((x0 + x1) / 2, Math.min(y0, y1) - 0.9, x1, y1); stroke(c, S(hairC, -0.2), w); };
     if (view === 's') {
       // ligne de profil (vers +x) : front, arcade, nez, lèvres, menton, mâchoire, nuque
@@ -4049,9 +4071,14 @@ function createMusic(a, out) {
       if (view !== 'b') {
         const ex = 3.5, ey = -0.8;
         if (blink) { c.beginPath(); c.moveTo(ex - 1.8, ey); c.quadraticCurveTo(ex, ey + 0.6, ex + 1.8, ey - 0.2); stroke(c, INK, 0.8); }
-        else { sm(c, [[ex - 1.8, ey + 0.2], [ex - 0.4, ey - 1.1], [ex + 1.8, ey - 0.6], [ex + 0.2, ey + 0.8]]); c.fillStyle = '#fbfbf8'; c.fill(); ell(c, ex + 0.9, ey - 0.1, 0.85, 0.9, eyeC, 0); ell(c, ex + 1.1, ey - 0.1, 0.4, 0.4, '#0c0c14', 0); ell(c, ex + 0.7, ey - 0.5, 0.25, 0.25, '#fff', 0);
+        else { sm(c, [[ex - 1.8, ey + 0.2], [ex - 0.4, ey - 1.1], [ex + 1.8, ey - 0.6], [ex + 0.2, ey + 0.8]]); c.fillStyle = '#fbfbf8'; c.fill(); const sx = sac(1); ell(c, ex + 0.9 + sx, ey - 0.1, 0.85, 0.9, eyeC, 0); ell(c, ex + 0.9 + sx, ey - 0.1, 0.85, 0.9, A('#000', 0.18), 0.25); ell(c, ex + 1.1 + sx, ey - 0.1, 0.4, 0.4, '#0c0c14', 0); ell(c, ex + 0.7 + sx, ey - 0.5, 0.25, 0.25, '#fff', 0); ell(c, ex + 1.1 + sx, ey + 0.3, 0.3, 0.2, A('#fff', 0.2), 0);
+          sm(c, [[ex - 1.8, ey + 0.2], [ex - 0.4, ey - 1.1], [ex + 1.8, ey - 0.6], [ex + 0.4, ey - 0.4]]); c.fillStyle = A('#000', 0.1); c.fill();
+          if (half) { c.beginPath(); c.moveTo(ex - 2, ey - 0.2); c.quadraticCurveTo(ex, ey + 0.1, ex + 2, ey - 0.3); c.lineTo(ex + 2.1, ey - 1.9); c.lineTo(ex - 2.1, ey - 1.9); c.closePath(); c.fillStyle = skin; c.fill(); c.beginPath(); c.moveTo(ex - 2, ey - 0.2); c.quadraticCurveTo(ex, ey + 0.1, ex + 2, ey - 0.3); stroke(c, INK, 0.7); }
           c.beginPath(); c.moveTo(ex - 2.1, ey + 0.1); c.quadraticCurveTo(ex - 0.2, ey - 1.7, ex + 2.1, ey - 0.6); stroke(c, INK, 0.75); if (F) { c.beginPath(); c.moveTo(ex + 1.8, ey - 0.7); c.lineTo(ex + 3, ey - 1.5); stroke(c, INK, 0.6); } }
-        brow(ex - 2.2, -3.1, ex + 2.4, -3.2 - (k === 'think' ? 0.7 : 0), L.thickBrows ? 1.5 : (F ? 0.7 : 1));
+        brow(ex - 2.2, -3.1 - bl, ex + 2.4, -3.2 - bl - (k === 'think' ? 0.7 : 0), L.thickBrows ? 1.5 : (F ? 0.7 : 1));
+        ell(c, 5.9, 2.5, 0.55, 0.3, A('#000', 0.5), 0); c.beginPath(); c.moveTo(4.4, 3.4); c.quadraticCurveTo(3.3, 4.6, 3.8, 6.2); stroke(c, A(skinD, L.gray ? 0.6 : 0.28), 0.5);   // narine, sillon naso‑génien
+        if (L.gray) { c.beginPath(); c.moveTo(ex - 3.4, -0.6); c.lineTo(ex - 4.6, -0.2); c.moveTo(ex - 3.4, 0.4); c.lineTo(ex - 4.4, 1.2); stroke(c, A(skinD, 0.5), 0.4); }   // pattes d'oie
+        ell(c, 3.8, 2.1, 1.6, 0.9, A('#fff', 0.1), 0);
         if (F) ell(c, 3.2, 3.6, 1.8, 1, A('#e07a8a', 0.22), 0);
         const my = 5.5; if (talk > 0.2) { sm(c, [[5.1, my - 0.4], [3.2, my - 0.2], [3.4, my + 0.9 + talk * 1.3], [5.3, my + 0.8 + talk]]); fs(c, '#5a1420', 0.5); }
         else { c.beginPath(); c.moveTo(5.5, my); c.quadraticCurveTo(4.2, my + 0.5, 3, my - 0.1); stroke(c, F ? (L.lipstick || '#b8344a') : S(skinD, -0.3), F ? 1.1 : 0.7); }
@@ -4070,20 +4097,25 @@ function createMusic(a, out) {
         for (const sd of [-1, 1]) {
           const ex = sd * 3.1, ey = -0.7 + (sd * 0.0);
           if (blink) { c.beginPath(); c.moveTo(ex - 1.8, ey); c.quadraticCurveTo(ex, ey + 0.7, ex + 1.8, ey); stroke(c, INK, 0.8); }
-          else { sm(c, [[ex - 1.8, ey + 0.1], [ex, ey - 1.3], [ex + 1.8, ey + 0.1], [ex, ey + 1]]); c.fillStyle = '#fbfbf8'; c.fill(); const lk = (p.look || 0) * 0.3; ell(c, ex + lk, ey - 0.1, 0.95, 1, eyeC, 0); ell(c, ex + lk, ey - 0.1, 0.45, 0.45, '#0c0c14', 0); ell(c, ex + lk - 0.3, ey - 0.5, 0.25, 0.25, '#fff', 0);
+          else { sm(c, [[ex - 1.8, ey + 0.1], [ex, ey - 1.3], [ex + 1.8, ey + 0.1], [ex, ey + 1]]); c.fillStyle = '#fbfbf8'; c.fill(); const lk = (p.look || 0) * 0.3 + sac(sd); ell(c, ex + lk, ey - 0.1, 0.95, 1, eyeC, 0); ell(c, ex + lk, ey - 0.1, 0.95, 1, A('#000', 0.18), 0.25); ell(c, ex + lk, ey - 0.1, 0.45, 0.45, '#0c0c14', 0); ell(c, ex + lk - 0.3, ey - 0.5, 0.25, 0.25, '#fff', 0); ell(c, ex + lk + 0.3, ey + 0.3, 0.3, 0.2, A('#fff', 0.2), 0);
+            sm(c, [[ex - 1.8, ey + 0.1], [ex, ey - 1.3], [ex + 1.8, ey + 0.1], [ex, ey - 0.3]]); c.fillStyle = A('#000', 0.1); c.fill();
+            if (half) { c.beginPath(); c.moveTo(ex - 2, ey - 0.1); c.quadraticCurveTo(ex, ey + 0.3, ex + 2, ey - 0.1); c.lineTo(ex + 2.1, ey - 2); c.lineTo(ex - 2.1, ey - 2); c.closePath(); c.fillStyle = skin; c.fill(); c.beginPath(); c.moveTo(ex - 2, ey - 0.1); c.quadraticCurveTo(ex, ey + 0.3, ex + 2, ey - 0.1); stroke(c, INK, 0.7); }
             c.beginPath(); c.moveTo(ex - 2, ey + 0.1); c.quadraticCurveTo(ex, ey - 1.8, ex + 2, ey + 0.1); stroke(c, INK, 0.8); if (F) { c.beginPath(); c.moveTo(ex + sd * 1.9, ey); c.lineTo(ex + sd * 2.9, ey - 0.9); stroke(c, INK, 0.6); } }
-          brow(ex - sd * 2.2, -3.2 + (sd < 0 ? 0 : 0), ex + sd * 2.3, -3.6 - (k === 'think' && sd > 0 ? 0.8 : 0), L.thickBrows ? 1.5 : (F ? 0.7 : 1));
+          brow(ex - sd * 2.2, -3.2 - bl * (sd > 0 ? 1 : 0.7), ex + sd * 2.3, -3.6 - bl * (sd > 0 ? 1 : 0.7) - (k === 'think' && sd > 0 ? 0.8 : 0), L.thickBrows ? 1.5 : (F ? 0.7 : 1));
+          if (L.gray) { c.beginPath(); c.moveTo(ex + sd * 3.2, -0.5); c.lineTo(ex + sd * 4.4, -0.1); c.moveTo(ex + sd * 3.2, 0.5); c.lineTo(ex + sd * 4.2, 1.3); stroke(c, A(skinD, 0.5), 0.4); }
         }
         c.beginPath(); c.moveTo(0.4, -1.6); c.quadraticCurveTo(1.2, 1.6, 1.6, 2.8); c.quadraticCurveTo(0.2, 3.8, -1.5, 3); c.quadraticCurveTo(-1.2, 2.4, -0.9, 2.6); stroke(c, A(skinD, 0.85), 0.7);   // nez
-        ell(c, -0.2, 2.6, 0.5, 0.35, A('#fff', 0.3), 0);
+        ell(c, -0.2, 2.6, 0.5, 0.35, A('#fff', 0.3), 0); for (const sd of [-1, 1]) ell(c, sd * 0.9, 3.2, 0.45, 0.28, A('#000', 0.45), 0);   // narines
+        for (const sd of [-1, 1]) { ell(c, sd * 3.9, 2.4, 1.5, 1, A('#fff', 0.09), 0); c.beginPath(); c.moveTo(sd * 1.8, 3.6); c.quadraticCurveTo(sd * 3, 5, sd * 2.8, 6.4); stroke(c, A(skinD, L.gray ? 0.55 : 0.22), 0.5); }   // pommettes, sillons
+        if (L.gray) { for (const yy of [-6.6, -5.7]) { c.beginPath(); c.moveTo(-3.6, yy); c.quadraticCurveTo(0, yy - 0.7, 3.6, yy); stroke(c, A(skinD, 0.35), 0.4); } }   // rides du front
         if (F) for (const sd of [-1, 1]) ell(c, sd * 4.4, 3.6, 1.7, 1, A('#e07a8a', 0.22), 0);
-        const my = 5.5; if (talk > 0.2) { sm(c, [[-2.4, my - 0.2], [0, my - 0.7], [2.4, my - 0.2], [1.8, my + 0.8 + talk * 1.6], [0, my + 1.2 + talk * 1.8], [-1.8, my + 0.8 + talk * 1.6]]); fs(c, '#5a1420', 0.5); c.fillStyle = '#f4f0e8'; c.fillRect(-1.5, my - 0.4, 3, 0.8); }
+        const my = 5.5; if (talk > 0.2) { sm(c, [[-2.4 * wsc, my - 0.2], [0, my - 0.7], [2.4 * wsc, my - 0.2], [1.8 * wsc, my + 0.8 + talk * 1.6], [0, my + 1.2 + talk * 1.8], [-1.8 * wsc, my + 0.8 + talk * 1.6]]); fs(c, '#5a1420', 0.5); if (talk > 0.5) ell(c, 0, my + 0.7 + talk * 1.3, 1.2 * wsc, 0.55, A('#c4505a', 0.85), 0); c.fillStyle = '#f4f0e8'; c.fillRect(-1.5 * wsc, my - 0.4, 3 * wsc, 0.8); }
         else { c.beginPath(); c.moveTo(-2.6, my); c.quadraticCurveTo(-1, my - 0.5, 0, my - 0.2); c.quadraticCurveTo(1, my - 0.5, 2.6, my); stroke(c, F ? (L.lipstick || '#b8344a') : S(skinD, -0.3), F ? 0.9 : 0.8); c.beginPath(); c.moveTo(-2.1, my + 0.2); c.quadraticCurveTo(0, my + 1.4, 2.1, my + 0.2); stroke(c, F ? A(L.lipstick || '#b8344a', 0.75) : A(skinD, 0.7), F ? 0.8 : 0.6); }
         if (L.mustache) { sm(c, [[-3.4, my - 1.6], [0, my - 2.2], [3.4, my - 1.6], [2.6, my - 0.4], [0, my - 0.9], [-2.6, my - 0.4]]); fs(c, L.mustache === true ? S(hairC, -0.1) : L.mustache, 0.4); }
         if (L.glasses) { const gc = L.glasses === true ? '#222' : L.glasses; for (const sd of [-1, 1]) { c.beginPath(); c.roundRect ? c.roundRect(sd * 3.1 - 2.6, -0.7 - 2.2, 5.2, 4.2, 1.3) : c.rect(sd * 3.1 - 2.6, -2.9, 5.2, 4.2); c.fillStyle = A('#d6ecff', 0.2); c.fill(); stroke(c, gc, 0.9); } c.beginPath(); c.moveTo(-0.5, -1.4); c.lineTo(0.5, -1.4); stroke(c, gc, 0.8); }
       }
     }
-    hair(c, L.hairStyle || 'short', hairC, view, L.gray, 'front');
+    c.save(); c.translate(0, -7); c.rotate(sway * 0.35); c.translate(0, 7); hair(c, L.hairStyle || 'short', hairC, view, L.gray, 'front'); c.restore();
     if (L.cap) { c.beginPath(); c.moveTo(-7.2, -3.6); c.bezierCurveTo(-7.4, -12, 7.4, -12, 7.2, -3.6); c.closePath(); fs(c, lin(c, 0, -11, 0, -3, [[0, S(L.cap, 0.15)], [1, L.cap]]), 0.8); poly(c, view === 's' ? [[3, -4.6], [11, -3.6], [10.4, -2.2], [3, -3.2]] : [[-7.4, -4.6], [7.4, -4.6], [6.6, -3], [-6.6, -3]]); fs(c, S(L.cap, -0.25), 0.7); }
   }
 
@@ -4092,12 +4124,14 @@ function createMusic(a, out) {
     c.save(); c.translate(x, y); c.rotate(ang); c.scale(sc, sc);
     sm(c, [[-1.8, 0], [-2.4, 3], [-1.6, 6.2], [0, 7], [1.6, 6.2], [2.4, 3], [1.8, 0]]); fs(c, lin(c, -2.4, 0, 2.4, 0, [[0, S(skin, 0.06)], [1, S(skin, -0.12)]]), 0.7);
     ell(c, side * 2.3, 2.4, 0.9, 2.2, skin, 0.6, side * -0.5);    // pouce
-    c.beginPath(); c.moveTo(-1, 5.2); c.lineTo(1, 5.4); stroke(c, A('#000', 0.3), 0.4); c.restore();
+    for (const fx of [-0.9, 0, 0.9]) { c.beginPath(); c.moveTo(fx, 3.6); c.quadraticCurveTo(fx + 0.1, 5.2, fx * 0.9, 6.5); stroke(c, A('#000', 0.3), 0.4); }   // doigts
+    c.beginPath(); c.moveTo(-1.4, 2.8); c.quadraticCurveTo(0, 3.3, 1.4, 2.8); stroke(c, A('#fff', 0.28), 0.5);                                                      // jointures
+    c.restore();
   }
   function shoeSide(c, ax, ay, rot, col) {
     c.save(); c.translate(ax, ay); c.rotate(rot);
     sm(c, [[-3.6, -2.2], [-4.6, 2.2], [-3.8, 4], [10, 4], [12.2, 2.4], [10.6, -0.4], [5.4, -1.4], [2.6, -3.4]]); fs(c, lin(c, 0, -3, 0, 4, [[0, S(col, 0.22)], [0.6, col], [1, S(col, -0.3)]]), 0.8);
-    c.fillStyle = 'rgba(0,0,0,.45)'; c.fillRect(-4.2, 3.2, 16.4, 1); c.beginPath(); c.moveTo(1, -2.4); c.quadraticCurveTo(7, -2, 10.4, 0.4); stroke(c, 'rgba(255,255,255,.25)', 0.6); c.restore();
+    c.fillStyle = 'rgba(0,0,0,.45)'; c.fillRect(-4.2, 3.2, 16.4, 1); c.fillStyle = A('#000', 0.38); c.fillRect(-4.4, 2.6, 4.2, 2); for (const lx of [3.4, 5.4, 7.4]) { c.beginPath(); c.moveTo(lx - 0.8, -2.6 + (lx - 3.4) * 0.14); c.lineTo(lx + 0.5, -1.2 + (lx - 3.4) * 0.14); stroke(c, A('#fff', 0.35), 0.5); } c.beginPath(); c.moveTo(1, -2.4); c.quadraticCurveTo(7, -2, 10.4, 0.4); stroke(c, 'rgba(255,255,255,.25)', 0.6); c.restore();
   }
 
   function drawPolitique(c, ch, p) {
@@ -4106,16 +4140,28 @@ function createMusic(a, out) {
     const jacket = o.jacket || '#1e2a48', shirt = o.shirt || '#f2f4fa', tie = o.tie, trousers = o.trousers || S(jacket, -0.1), shoes = o.shoes || '#16110f', skirt = o.skirt;
     const F = !!L.female; const bw = { slim: 0.92, normal: 1, stocky: 1.18 }[L.build || 'normal'];
     const view = p.dir === 'f' || p.dir === 'b' ? p.dir : 's'; const back = view === 'b';
-    const mov = !!p.moving; const t = p.walkT || 0; const idle = p.idleT || 0; const sit = p.pose === 'sit';
+    const M = motion(ch, p); const m = M.m; const mov = m > 0.04; const t = p.walkT || 0; const idle = p.idleT || 0; const sit = p.pose === 'sit';
     const an = p.anim || {}; const k = an.name; const ap = an.t === undefined ? 0 : an.t; const eased = Math.sin(Math.min(1, ap) * Math.PI);
     const sn = Math.sin(t);
     const seed = (() => { let h = 7; const s = String(L.hair) + String(skin) + String(jacket) + String(L.hairStyle) + String(L.build); for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 9973; return h; })();
     const sh = (F ? 12.6 : 15.2) * (0.94 + bw * 0.06), hipW = (F ? 12.4 : 11.6) * bw, waistW = (F ? 8.6 : 11.2) * bw;      // demi‑largeurs (face)
-    const dip = mov ? Math.abs(sn) * 1.9 : 0;                                                                              // bassin plus bas à l'écartement
-    const breath = mov ? 0 : Math.sin(idle * 2.1) * 0.35;
-    const HIP = -59 + dip, SHY = -96 + dip * 0.7 + breath * 0.3;
+    // démarche : phase d'appui (60 % du cycle, pied qui recule à vitesse constante) puis phase pendulaire (levée + attaque du talon)
+    const gait = (ph) => {
+      const u = ((ph / TAU) % 1 + 1) % 1; const ST = 0.6; let x, lift, rot;
+      if (u < ST) { const a = u / ST; x = 1 - 2 * a; lift = a > 0.78 ? 3 * sstep0((a - 0.78) / 0.22) : 0; rot = a < 0.14 ? -0.24 * (1 - a / 0.14) : a > 0.72 ? 0.55 * sstep0((a - 0.72) / 0.28) : 0; }
+      else { const a = (u - ST) / (1 - ST); x = -1 + 2 * (0.5 - 0.5 * Math.cos(Math.PI * Math.min(1, a * 1.08))); lift = 3 * (1 - a) + 5.6 * Math.sin(Math.PI * a); rot = 0.55 + (-0.24 - 0.55) * sstep0(a * 1.25); }
+      return { x, lift, rot };
+    };
+    const gA = gait(t), gB = gait(t + Math.PI);
+    const dip = m * Math.abs(gA.x - gB.x) / 2 * 1.9;                                                                       // bassin plus bas quand les jambes s'écartent
+    const breath = (1 - m) * Math.sin(idle * 2.1) * 0.6;
+    const ws = Math.tanh(2.2 * Math.sin(idle * 0.34 + seed * 0.37)) * (1 - m);                                              // appui préféré : bascule lente du poids
+    const squat = k === 'pickup' ? 10 * eased : 0, shr = k === 'shrug' ? 2.4 * eased : 0;
+    const hl = -0.9 * m + 0.8 * m * Math.sin(2 * t + 0.6);                                                                 // l'ourlet de la veste traîne
+    const HIP = -59 + dip + squat, SHY = -96 + dip * 0.7 + breath * 0.5 + squat;
     const legCol = skirt ? (L.stockings || S(skin, -0.05)) : trousers; const sleeve = o.sleeve || jacket;
-    const talk = p.talk > 0; const idleSway = mov || sit ? 0 : Math.sin(idle * 0.8) * 0.4;
+    const talk = p.talk > 0; const idleSway = sit ? 0 : (1 - m) * (Math.sin(idle * 0.8) * 0.4 + ws * 1.3);
+    p._sway = 0.045 * m * Math.sin(2 * t + 0.8) - 0.012 * clampN(M.dm, -4, 4);                                             // inertie des cheveux
     c.save();
     // ============ JAMBES ============
     const legs = [];
@@ -4123,18 +4169,26 @@ function createMusic(a, out) {
     const leg = (side) => {
       const phase = t + (side < 0 ? Math.PI : 0); const cs = Math.cos(phase), s2 = Math.sin(phase);
       const hx = view === 's' ? 0 : side * 4.6; let fx, fy, rot = 0;
+      const rx = Math.max(0, ws * side);                                   // jambe « au repos » (hanchée)
+      const pk = k === 'pickup' ? (side < 0 ? -4 : 3) * eased : 0;         // pas décalé pour s'accroupir
       if (view === 's') {
-        if (mov) { fx = hx + s2 * 13; fy = -4 - Math.max(0, cs) * 7.5; rot = cs > 0 ? -0.22 * cs : Math.max(0, -s2) * 0.5; } else { fx = hx + side * 2; fy = -4; }
-      } else { fx = hx + side * 0.8 + (mov ? side * 0.6 : 0); fy = -4 - (mov ? Math.max(0, cs) * 5 : 0) + (mov ? s2 * 2.6 * (view === 'f' ? 1 : -1) : 0); }
+        const g = side < 0 ? gA : gB;
+        fx = hx + lerp(side * 2 + rx * 3 + pk, g.x * 12.5, m); fy = -4 - g.lift * m - rx * 0.6; rot = g.rot * m - rx * 0.1;
+      } else { fx = hx + side * 0.8 + side * 0.6 * m + rx * side * 1.6; fy = -4 - m * Math.max(0, cs) * 5 + m * s2 * 2.6 * (view === 'f' ? 1 : -1) - rx * 0.5; }
       const hy = HIP;
       let kn = ik(hx, hy, fx, fy, LEG, LEG, -1); let ankle = { x: kn.bx, y: kn.by };
-      if (view !== 's') kn = { x: (hx + ankle.x) / 2 + side * 1.4, y: (hy + ankle.y) / 2 };
+      if (view !== 's') kn = { x: (hx + ankle.x) / 2 + side * (1.4 + rx * 0.9) - (squat ? side * squat * 0.2 : 0), y: (hy + ankle.y) / 2 - squat * 0.25 };
       return { hx, hy, kn, ankle, rot, side };
     };
     const drawLeg = (g) => {
       const w0 = (view === 's' ? 12.4 : 11.2) * (skirt ? 0.82 : 1) * (0.92 + bw * 0.08), wk = (skirt ? 7.6 : 9) , wa = skirt ? 5.2 : 6.8;
       tube(c, [[g.hx, g.hy], [g.kn.x, g.kn.y], [g.ankle.x, g.ankle.y]], [w0, wk, wa], legCol, true);
       if (!skirt) { c.beginPath(); c.moveTo(g.hx + (view === 's' ? 1.4 : 0), g.hy + 6); c.lineTo(g.kn.x + 1, g.kn.y); c.lineTo(g.ankle.x + 0.6, g.ankle.y - 3); stroke(c, A('#000', 0.14), 0.6); }   // pli du pantalon
+      if (view === 's') {   // genou fléchi : plis de tissu à l'avant, ombre au creux ; revers au-dessus de la chaussure
+        const v1x = g.kn.x - g.hx, v1y = g.kn.y - g.hy, v2x = g.ankle.x - g.kn.x, v2y = g.ankle.y - g.kn.y; const fl = Math.abs(Math.atan2(v1x * v2y - v1y * v2x, v1x * v2x + v1y * v2y));
+        if (fl > 0.3 && !skirt) { const l1 = Math.hypot(v1x, v1y) || 1; const ux = v1x / l1, uy = v1y / l1; for (const q of [4, 7.4]) { const bx = g.kn.x - ux * q + 2.2, by = g.kn.y - uy * q; c.beginPath(); c.moveTo(bx - 1.4, by - 0.4); c.quadraticCurveTo(bx + 1.8, by + 0.6, bx + 3.6, by - 0.2 + (q - 4) * 0.1); stroke(c, A('#000', Math.min(0.3, fl * 0.22)), 0.6); } c.beginPath(); c.moveTo(g.kn.x - 3.4, g.kn.y + 1.6); c.quadraticCurveTo(g.kn.x - 4.6, g.kn.y + 4, g.kn.x - 3.2, g.kn.y + 7); stroke(c, A('#000', Math.min(0.28, fl * 0.2)), 1.2); }
+        if (!skirt) { c.beginPath(); c.moveTo(g.ankle.x - 3.4, g.ankle.y - 2.8); c.lineTo(g.ankle.x + 3.4, g.ankle.y - 2.8); stroke(c, A('#000', 0.3), 0.7); }
+      }
       if (view === 's') shoeSide(c, g.ankle.x, g.ankle.y, g.rot, shoes);
       else { ell(c, g.ankle.x + g.side * 0.6, g.ankle.y + 1.8, 4.2, 3.2, lin(c, 0, g.ankle.y - 2, 0, g.ankle.y + 5, [[0, S(shoes, 0.2)], [1, S(shoes, -0.25)]]), 0.8); if (!back) ell(c, g.ankle.x + g.side * 0.6 - 0.8, g.ankle.y + 0.8, 1.7, 0.7, A('#fff', 0.25), 0); }
     };
@@ -4145,7 +4199,7 @@ function createMusic(a, out) {
     } else { legs.push(leg(-1), leg(1)); drawLeg(view === 's' ? legs[0] : legs[0]); drawLeg(legs[1]); }
     // ============ HAUT DU CORPS (avec léger penché) ============
     c.save(); if (sit) c.translate(0, 33);
-    c.translate(idleSway, 0); c.translate(0, HIP); const lean = (view === 's' ? (mov ? 0.05 : 0) : (mov ? sn * 0.025 : 0)) + (k === 'pickup' ? 0.5 * eased : 0) + (talk && !mov ? Math.sin(idle * 1.4 + seed) * 0.018 : 0); c.rotate(lean); c.translate(0, -HIP);
+    c.translate(idleSway, 0); c.translate(0, HIP); const lean = (view === 's' ? 0.05 * m : m * sn * 0.025) + 0.015 * clampN(M.dm, -4, 4) + (k === 'pickup' ? 0.42 * eased : 0) + (k === 'reach' ? 0.07 * eased : 0) + (talk && !mov ? Math.sin(idle * 1.4 + seed) * 0.018 : 0) + (view !== 's' ? ws * 0.02 : 0); c.rotate(lean); c.translate(0, -HIP);
 
     // ---- gestes de la parole : enchaînement irrégulier, propre à chaque personnage (graine tirée de son apparence) ----
     const Hh = (n) => { const x = Math.sin(n * 127.1 + seed * 311.7) * 43758.5453; return x - Math.floor(x); };
@@ -4189,27 +4243,29 @@ function createMusic(a, out) {
     // ---- bras de l'arrière (côté loin) ----
     const arm = (front) => {
       const sd = front ? 1 : -1;
-      let ox = view === 's' ? (front ? 0.8 : -0.8) : sd * (sh - 1.6); const oy = SHY + 1.6;
+      let ox = view === 's' ? (front ? 0.8 : -0.8) : sd * (sh - 1.6); const oy = SHY + 1.6 - shr;
       let hx, hy, R = 38, ang = 0;
-      const wlk = mov ? (front ? sn : -sn) : 0;
+      const wlk = m * (front ? sn : -sn);
       if (view === 's') {
-        ang = wlk * 0.55 + (mov ? 0 : Math.sin(idle * 1.1 + (front ? 0 : 1)) * 0.03); R = 40 - Math.max(0, Math.sin(ang)) * 7;
+        ang = wlk * 0.55 + (1 - m) * Math.sin(idle * 1.1 + (front ? 0 : 1)) * 0.03; R = 40 - Math.max(0, Math.sin(ang)) * 7;
         if (front && k === 'reach') { ang = 1.45 + eased * 0.2; R = 40; } else if (front && k === 'pickup') { ang = 0.7 + eased * 0.6; R = 44; } else if (front && k === 'wave') { ang = 2.7 + Math.sin(ap * 40) * 0.3; R = 38; }
         else if (front && k === 'think') { ang = 2.4; R = 36; } else if (k === 'shrug') { ang = front ? 0.5 : -0.5; R = 30; } else if (talk) { const g = blendG((r, tt) => sideG(r, tt, front), front, sd); ang = g[0]; R = g[1]; }
         hx = ox + Math.sin(ang) * R; hy = oy + Math.cos(ang) * R;
       } else {
-        const out = 3.6 + (mov ? 0.6 : 0);
-        hx = ox + sd * out; hy = oy + 39.6 - (mov ? Math.max(0, front ? sn : -sn) * 3 : 0) * 1;
+        const out = 3.6 + 0.6 * m;
+        hx = ox + sd * out + (1 - m) * sd * Math.sin(idle * 0.8 + seed + sd) * 0.5; hy = oy + 39.6 - m * Math.max(0, front ? sn : -sn) * 3;
         if (k === 'wave' && front) { hx = ox + sd * 8 + Math.sin(ap * 40) * 4; hy = oy - 10; R = 38; }
         else if (k === 'shrug') { hx = ox + sd * 12; hy = oy + 20; } else if (k === 'reach' && front) { hx = ox + sd * 14; hy = oy + 18; } else if (k === 'think' && front) { hx = ox - sd * 1.5; hy = oy + 8; }
         else if (talk) { const g = blendG((r, tt) => frontG(r, tt, sd, front), front, sd); hx = ox + g[0]; hy = oy + g[1]; }
-        else if (mov) hx += sd * 0.5;
+        else hx += sd * 0.5 * m;
       }
       const dd = Math.hypot(hx - ox, hy - oy) || 1; const Rm = Math.min(dd, 40.6); hx = ox + (hx - ox) / dd * Rm; hy = oy + (hy - oy) / dd * Rm;
       const bend = view === 's' ? 1 : (hy < oy - 6 ? sd : -sd);
       const el = ik(ox, oy, hx, hy, 21.6, 19.6, bend);
       const wu = (F ? 7.4 : 8.6) * (0.94 + bw * 0.06);
       tube(c, [[ox, oy], [el.x, el.y], [el.bx, el.by]], [wu, wu * 0.84, wu * 0.66], sleeve, true);
+      { const e1x = el.x - ox, e1y = el.y - oy, e2x = el.bx - el.x, e2y = el.by - el.y; const fl = Math.abs(Math.atan2(e1x * e2y - e1y * e2x, e1x * e2x + e1y * e2y));   // coude fléchi : plis de manche
+        if (fl > 0.35) { const dl = Math.hypot(e2x, e2y) || 1; const nx = -e2y / dl, ny = e2x / dl; for (const q of [-1.6, 0.4]) { c.beginPath(); c.moveTo(el.x + q * (e2x / dl) - nx * wu * 0.36, el.y + q * (e2y / dl) - ny * wu * 0.36); c.lineTo(el.x + q * (e2x / dl) + nx * wu * 0.36, el.y + q * (e2y / dl) + ny * wu * 0.36); stroke(c, A('#000', Math.min(0.3, fl * 0.2)), 0.55); } } }
       // poignet de chemise + main
       const fa = Math.atan2(el.by - el.y, el.bx - el.x) - Math.PI / 2;
       c.save(); c.translate(el.bx, el.by); c.rotate(fa); ell(c, 0, -0.4, wu * 0.36, 1.2, o.cuff || shirt, 0.5); c.restore();
@@ -4224,12 +4280,12 @@ function createMusic(a, out) {
       for (const q of [-0.55, -0.1, 0.35]) { c.beginPath(); c.moveTo(q * hipW, HIP + 6); c.lineTo(q * (hipW + 3.6), -26); stroke(c, A('#000', 0.18), 0.6); }
     }
     if (view === 's') {
-      const fr = F ? [[3.2, -100.6], [7, -97.4], [9.6, -92.6], [11.4, -88.4], [10.6, -84.6], [7.8, -81.6], [6, -76], [6.4, -64], [7.2, hem + 2]] : [[3.4, -101], [7.4, -97], [7.8, -90], [7.8, -80], [7.6, -70], [7.8, -58], [8, hem + 2]];
-      const bk = F ? [[-7.4, hem + 2], [-6.6, -64], [-5.8, -76], [-6.6, -88], [-6.4, -97], [-3.6, -100.8]] : [[-8, hem + 2], [-7.8, -58], [-7.4, -72], [-7.8, -86], [-7, -96.6], [-3.6, -101]];
+      const fr = F ? [[3.2, -100.6], [7, -97.4], [9.6, -92.6], [11.4, -88.4], [10.6, -84.6], [7.8, -81.6], [6, -76], [6.4, -64], [7.2 + hl, hem + 2]] : [[3.4, -101], [7.4, -97], [7.8, -90], [7.8, -80], [7.6, -70], [7.8, -58], [8 + hl, hem + 2]];
+      const bk = F ? [[-7.4 + hl, hem + 2], [-6.6, -64], [-5.8, -76], [-6.6, -88], [-6.4, -97], [-3.6, -100.8]] : [[-8 + hl, hem + 2], [-7.8, -58], [-7.4, -72], [-7.8, -86], [-7, -96.6], [-3.6, -101]];
       sm(c, fr.concat([[0, hem + 3.6]], bk)); c.fillStyle = lin(c, -8, 0, 9, 0, [[0, S(jacket, -0.3)], [0.5, S(jacket, 0.02)], [1, S(jacket, 0.2)]]); c.fill(); c.lineWidth = 0.9; c.strokeStyle = INK; c.stroke();
       if (!back) {
         poly(c, [[3.2, -100.4], [5.6, -98], [6.2, -86], [4.6, -84], [3.6, -92]]); fs(c, shirt, 0.5);
-        if (tie) { poly(c, [[3.6, -99], [5.4, -97.6], [6.6, -80], [5.2, -77], [4.4, -86]]); fs(c, tie, 0.5); }
+        if (tie) { const tw = m * Math.sin(2 * t + 1.2) * 1.2 - 0.6 * m + Math.sin(idle * 1.3) * 0.12; poly(c, [[3.6, -99], [5.4, -97.6], [6.6 + tw, -80], [5.2 + tw, -77], [4.4 + tw * 0.4, -86]]); fs(c, tie, 0.5); }
         c.beginPath(); c.moveTo(4.4, -84); c.lineTo(6.6, hem + 4); stroke(c, A('#000', 0.32), 0.7);
         if (F) {   // profil du buste : arrondi doux, lumière sur le dessus, ombre sous la poitrine
           c.beginPath(); c.moveTo(6.4, -95.2); c.quadraticCurveTo(10, -93.2, 11, -89); stroke(c, A('#fff', 0.26), 1.2);
@@ -4275,8 +4331,9 @@ function createMusic(a, out) {
     // ---- tête (par‑dessus le col) ----
     c.save(); const nod = talk ? (Math.sin(idle * 3.1 + seed) * 0.5 + Math.sin(idle * 5.7) * 0.35 + Math.sin(idle * 1.3) * 0.3) * 0.03 : Math.sin(idle * 0.7 + seed) * 0.008;
     c.fillStyle = lin(c, -3.2, 0, 3.2, 0, [[0, S(nk, -0.22)], [1, S(nk, -0.06)]]); c.fillRect(hxn - 3, hy0 + 6, 6, 8);
-    if (!back) { poly(c, view === 's' ? [[-2.8, -101.4], [4, -101.4], [4.4, -99], [0.8, -98.4]] : [[-4.6, -101.4], [4.6, -101.4], [4, -99], [0, -97.6], [-4, -99]]); fs(c, shirt, 0.5); }
-    c.translate(hxn, hy0); c.rotate(nod + (view === 's' && mov ? 0.01 : 0)); head(c, L, p, view, F, k); c.restore();
+    if (!back) { poly(c, view === 's' ? [[-2.8, -101.4], [4, -101.4], [4.4, -99], [0.8, -98.4]] : [[-4.6, -101.4], [4.6, -101.4], [4, -99], [0, -97.6], [-4, -99]]); fs(c, shirt, 0.5);
+      c.fillStyle = A('#000', 0.18); c.beginPath(); c.ellipse(hxn + (view === 's' ? 1.2 : 0), -99.6, view === 's' ? 3 : 4.4, 1.5, 0, 0, TAU); c.fill(); }
+    c.translate(hxn, hy0 + shr * 0.6); c.rotate(nod + (view === 's' && mov ? 0.01 : 0) - lean * 0.55 * (view === 's' ? 1 : 0.4) + (k === 'pickup' ? 0.22 * eased : 0) + (view !== 's' ? Math.sin(idle * 0.5 + seed) * 0.012 * (1 - m) : 0)); head(c, L, p, view, F, k); c.restore();
     c.restore();     // fin du penché
     // ---- bras de devant ----
     c.save(); if (sit) c.translate(0, 33); c.translate(idleSway, 0); c.translate(0, HIP); c.rotate(lean); c.translate(0, -HIP);
