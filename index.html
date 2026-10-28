@@ -4382,6 +4382,8 @@ AK.config({
     { if: 'seq_maquillage', points: 2 }, { if: 'seq_cafe', points: 2 }, { if: 'has:note_tresor', points: 2 },
     { if: { any: ['seq_police', 'seq_isf', 'seq_eurogroupe'] }, points: 2 }, { if: { any: ['seq_polemiste', 'seq_salaires', 'seq_cac40'] }, points: 2 }, { if: { any: ['seq_plafond_verre', 'seq_capitaux', 'seq_elysee'] }, points: 2 },
     { if: { any: ['seq_enclaves', 'seq_ecologie', 'seq_reformes'] }, points: 2 }, { if: { any: ['seq_metropoles', 'seq_greve_generale', 'seq_haute_fonction'] }, points: 2 }, { if: { any: ['seq_fait_divers', 'seq_services', 'seq_spread'] }, points: 2 },
+    { if: { any: ['seq_petition_artisans', 'seq_usines_listees', 'seq_rapport_comptes'] }, points: 3 }, { if: 'seq_plateau_terroir', points: 3 },
+    { if: { any: ['seq_reglement_securite', 'seq_banderole_zenith', 'seq_devis_zenith'] }, points: 3 }, { if: { any: ['seq_fiche_stats', 'seq_fiche_salaires', 'seq_fiche_dette'] }, points: 2 },
     { if: 'elu', points: 10 },
   ],
   hints: [
@@ -4397,6 +4399,13 @@ AK.config({
     { if: ['ch_1', '!seq_amendement', 'gage_vu', '!chiffre_ok'], say: 'Donnez la note de chiffrage au rapporteur général.' },
     { if: ['ch_1', '!seq_amendement', 'chiffre_ok', '!gage_ok'], say: 'Il manque un gage : utilisez le tableau des gages, derrière vous.' },
     { if: ['ch_1', '!seq_amendement'], say: 'Montrez à nouveau le brouillon d\'amendement au rapporteur : il est maintenant chiffré et gagé.' },
+    { if: ['ch_1', 'hero:marion', '!seq_petition_artisans', '!has:coupure_artisans', '!has:petition'], say: 'Dans la revue de presse du QG, un article sur les artisans pourrait devenir une pétition.' },
+    { if: ['ch_1', 'hero:marion', '!seq_petition_artisans', '!has:petition'], say: 'Utilisez la coupure de presse avec l\'ordinateur : vous la transformerez en pétition en ligne. Puis montrez‑la à Inès.' },
+    { if: ['ch_1', 'hero:marion', '!seq_petition_artisans'], say: 'Donnez la pétition à Inès : elle la mettra en une du site.' },
+    { if: ['ch_1', 'hero:leon', '!seq_usines_listees', '!has:liste_usines'], say: 'Sur le tableau de liège, une liste discrète de onze usines : prenez‑la.' },
+    { if: ['ch_1', 'hero:leon', '!seq_usines_listees'], say: 'Montrez la liste des usines au rapporteur général, à la commission des finances.' },
+    { if: ['ch_1', 'hero:bernard', '!seq_rapport_comptes', '!has:rapport_cour'], say: 'Dans l\'étagère du QG, un rapport de la Cour des comptes à la page cornée : ouvrez les classeurs.' },
+    { if: ['ch_1', 'hero:bernard', '!seq_rapport_comptes'], say: 'Donnez le rapport de la Cour des comptes au rapporteur général : il appuiera votre gage.' },
     { if: ['ch_1', '!seq_plf'], say: 'Votre directeur de campagne attend votre consigne sur le budget (censure, abstention, amendements).' },
     { if: ['ch_2', '!ch_3', '!seq_gilet', '!has:gilet_fluo'], say: 'À Marseille, près du camion : une caisse de gilets de l\'intersyndicale. Prenez‑en un.' },
     { if: ['ch_2', '!ch_3', '!seq_gilet'], say: 'Donnez le gilet fluo à Nadia : sur un barrage, on n\'écoute pas un costume.' },
@@ -4428,6 +4437,10 @@ AK.config({
     { if: ['ch_3', '!ch_4', '!seq_photo_vache', '!has:seau', '!has:seau_lait'], say: 'Salon de l\'agriculture : il y a un seau près de la barrière. La vache, elle, attend près des bottes de foin.' },
     { if: ['ch_3', '!ch_4', '!seq_photo_vache', 'has:seau'], say: 'Utilisez le seau avec la vache : vous trairez Marianne.' },
     { if: ['ch_3', '!ch_4', '!seq_photo_vache', 'has:seau_lait'], say: 'Donnez le seau de lait au photographe de presse : voilà la photo de la une.' },
+    { if: ['ch_3', '!ch_4', '!seq_plateau_terroir', '!has:fromage_aop', '!has:fromage_certifie', '!has:plateau_terroir_obj'], say: 'Facile à rater : au Salon, le stand de fromages offre un camembert AOP et le stand de vins une bouteille de rouge. Prenez les deux.' },
+    { if: ['ch_3', '!ch_4', '!seq_plateau_terroir', 'has:fromage_aop'], say: 'Une éleveuse sait reconnaître un fromage vrai : donnez le camembert à Colette.' },
+    { if: ['ch_3', '!ch_4', '!seq_plateau_terroir', 'has:fromage_certifie'], say: 'Utilisez le camembert certifié avec la bouteille de rouge pour composer un plateau du terroir.' },
+    { if: ['ch_3', '!ch_4', '!seq_plateau_terroir', 'has:plateau_terroir_obj'], say: 'Au plateau télé, Sonia saura quoi faire du plateau du terroir.' },
     { if: ['ch_3', '!ch_4', '!seq_baron'], say: 'Le Salon de l\'agriculture : Gérard Pontoise tient des parrainages.' },
     { if: ['ch_3', '!ch_4', '!seq_matinale', '!has:micro_cravate'], say: 'Au plateau télévisé : la matinale vous attend. Prenez le micro‑cravate sur la table de la régie.' },
     { if: ['ch_3', '!ch_4', '!seq_matinale'], say: 'Donnez le micro‑cravate à Sonia pour lancer la matinale.' },
@@ -4453,6 +4466,12 @@ AK.config({
     { if: ['ch_4', '!ch_5', '!seq_fronde'], say: 'Au QG : des hauts fonctionnaires préparent une tribune contre votre programme. Votre directeur de campagne attend votre réponse.' },
     { if: ['ch_4', '!ch_5', '!seq_meeting_son'], say: 'Au Zénith : prenez le micro HF dans la loge et branchez‑le au pupitre de scène.' },
     { if: ['ch_4', '!ch_5', '!seq_meeting_video'], say: 'Au Zénith : la clé USB de la vidéo se branche sur la régie vidéo.' },
+    { if: ['ch_4', '!ch_5', 'hero:marion', '!seq_reglement_securite', '!has:extrait_reglement'], say: 'À la Commission des comptes de campagne : un affichage du règlement de sécurité intéressera le régisseur du Zénith.' },
+    { if: ['ch_4', '!ch_5', 'hero:marion', '!seq_reglement_securite'], say: 'Donnez l\'extrait du règlement au régisseur du Zénith.' },
+    { if: ['ch_4', '!ch_5', 'hero:leon', '!seq_banderole_zenith', '!has:banderole'], say: 'Au Zénith : un flightcase contient une banderole rouge cousue par des militants.' },
+    { if: ['ch_4', '!ch_5', 'hero:leon', '!seq_banderole_zenith'], say: 'Utilisez la banderole avec le pupitre de scène.' },
+    { if: ['ch_4', '!ch_5', 'hero:bernard', '!seq_devis_zenith', '!has:devis_concurrent'], say: 'Dans les classeurs de la Commission des comptes de campagne : un devis concurrent pour la sono du Zénith.' },
+    { if: ['ch_4', '!ch_5', 'hero:bernard', '!seq_devis_zenith'], say: 'Donnez le devis concurrent au régisseur du Zénith.' },
     { if: ['ch_4', '!ch_5', '!seq_meeting_discours'], say: 'Au Zénith : les fiches du discours se posent sur le pupitre.' },
     { if: ['ch_4', '!ch_5', '!seq_comptes_campagne', '!has:classeur_comptes', '!has:classeur_certifie'], say: 'Comptes de campagne : trois factures à retrouver (tiroir du bureau au QG, coulisses du Zénith, stand du Salon), puis les faire viser par Mme Fabre.' },
     { if: ['ch_4', '!ch_5', '!seq_comptes_campagne', 'has:classeur_comptes', '!cert_demandee'], say: 'Portez le classeur à la Commission des comptes de campagne : le rapporteur dira ce qui manque.' },
@@ -6146,6 +6165,9 @@ AK.config({
     // ---------- Chapitre 1 : le budget ----------
     dossier_fin: { ch: 1, v: { t: 5, c: 1 }, say: 'Le dossier du mandataire financier est complet : association de financement déclarée, compte bancaire de campagne ouvert, carnet de reçus‑dons conforme. Une campagne propre commence par des papiers propres.' },
     amendement: { ch: 1, v: { c: 3, m: 1 }, say: 'L\'amendement est déclaré recevable : chiffré, gagé, déposé en commission des finances. Le gage ? Une taxe sur le tabac, grande tradition parlementaire — que le gouvernement s\'empressera de lever.' },
+    petition_artisans: { ch: 1, hero: 'marion', v: { m: 2, c: 1 }, say: 'La pétition des artisans dépasse les douze mille signatures : Inès la place en une du site. Votre ligne sur les petites entreprises a désormais un visage et un chiffre.' },
+    usines_listees: { ch: 1, hero: 'leon', v: { l: 1, m: 1 }, say: 'La liste des onze usines menacées est jointe au rapport de la commission : un chiffre, un site, un plan social. Le budget cesse d\'être abstrait.' },
+    rapport_comptes: { ch: 1, hero: 'bernard', v: { c: 3 }, say: 'La page 212 du rapport de la Cour des comptes appuie votre gage : le rapporteur ne peut plus dire que c\'est du « chiffrage de comptoir ».' },
     // ---------- Chapitre 2 : la rue et le Palais ----------
     gilet: { ch: 2, v: { l: 2, m: 1 }, say: 'Avec le gilet fluo sur le dos, vous n\'êtes plus « un homme en costume » : sur un piquet de grève, la tenue fait le moine.' },
     cafe: { ch: 2, v: { l: 2, m: 1 }, say: 'Un café chaud sur un piquet de grève : le plus petit geste, le plus grand effet. Nadia le dira à toute l\'intersyndicale.' },
@@ -6159,7 +6181,11 @@ AK.config({
     rapport_police: { ch: 3, hero: 'marion', v: { o: 2, c: 2, m: 1 }, say: 'Le commissaire vous remet un bilan de la délinquance, commune par commune. Vos propos sur la sécurité reposeront désormais sur des chiffres.' },
     caisse_usine: { ch: 3, hero: 'leon', v: { l: 3, m: 2, t: 2 }, say: 'Les ouvriers de l\'usine vous confient leur caisse de solidarité : mille euros, un symbole, et une photo qui fera le tour des syndicats.' },
     lettre_ue: { ch: 3, hero: 'bernard', v: { c: 4, s: -2 }, say: 'La lettre de la Commission européenne confirme que votre trajectoire de déficit est compatible avec les règles budgétaires de l\'Union. C\'est un atout de crédibilité, pas un argument de meeting.' },
+    plateau_terroir: { ch: 3, v: { m: 2 }, say: 'Un camembert certifié, une bouteille de rouge : la séquence « France des terroirs » passe à la télé régionale, plateau de fromages en gros plan. Vous avez trouvé le symbole que les éleveurs attendaient.' },
     // ---------- Chapitre 4 : les 500 signatures ----------
+    reglement_securite: { ch: 4, hero: 'marion', v: { c: 1, m: 1 }, say: 'Le régisseur du Zénith a reçu l\'extrait du règlement : jauge, issues, vigiles. Pas un incident possible, pas une rumeur de débordement.' },
+    banderole_zenith: { ch: 4, hero: 'leon', v: { l: 1, m: 1 }, say: 'La banderole « Le travail d\'abord » est accrochée au-dessus du pupitre : le cliché du soir sera pour vous.' },
+    devis_zenith: { ch: 4, hero: 'bernard', v: { t: 2, c: 1 }, say: 'Le devis concurrent a fait baisser la facture de la sono : deux cent mille euros économisés sur le compte de campagne, sans perdre un décibel.' },
     greffe: { ch: 4, v: { p: 15, c: 1 }, say: 'Trois présentations avaient été renvoyées pour vice de forme (cachet manquant, nom mal orthographié). Régularisées à temps : quinze parrainages sauvés.' },
     meeting_son: { ch: 4, v: { m: 1 }, say: 'Le système de sonorisation est réglé : on entendra chaque mot jusqu\'au dernier rang.' },
     meeting_video: { ch: 4, v: { m: 1 }, say: 'La vidéo de campagne est calée sur l\'écran géant : elle ouvrira le meeting.' },
@@ -6167,16 +6193,19 @@ AK.config({
     comptes_campagne: { ch: 4, v: { c: 3, m: 1, t: 2 }, say: 'Le rapporteur de la Commission enregistre le compte : visas du mandataire, factures reliées, certification de l’expert-comptable. Un compte propre est la première condition du remboursement par l’État.' },
     // ---------- Chapitre 5 : les débats ----------
     a_vote: { ch: 5, v: { m: 1 }, say: 'Vous avez voté. Pour un candidat, c’est un geste que les caméras guettent : carte d’identité, émargement, isoloir, urne. Le reste, c’est l’attente.' },
+    fiche_stats: { ch: 5, hero: 'marion', v: { c: 1 }, say: 'Les chiffres de la délinquance sont dans les notes de la présentatrice : le débat sécurité tournera autour de vos données.' },
+    fiche_salaires: { ch: 5, hero: 'leon', v: { l: 1 }, say: 'La fiche des salaires est dans les notes de la présentatrice : le débat sur le pouvoir d\'achat commencera sur vos chiffres.' },
+    fiche_dette: { ch: 5, hero: 'bernard', v: { c: 1 }, say: 'La fiche sur la dette est dans les notes de la présentatrice : vous parlerez de colonnes, pas d\'incantations.' },
     maquillage: { ch: 5, v: { c: 2 }, say: 'Un coup de poudre, un verre d\'eau : « Un visage qui brille se perd », disait‑on depuis le débat Kennedy‑Nixon de 1960.' },
   };
   C.GAINS = G;
 
   // Étapes obligatoires de chaque chapitre (identifiants de séquences ou de gains ; drapeau « seq_<id> ») qui s'ajoutent à C.REQ de base
   const EXTRA = {
-    1: { all: ['dossier_fin', 'amendement'] },
+    1: { all: ['dossier_fin', 'amendement'], marion: ['petition_artisans'], leon: ['usines_listees'], bernard: ['rapport_comptes'] },
     2: { all: ['gilet', 'matignon_acces', 'qag', 'choc493', 'mediapart'], marion: ['signatures'], leon: ['tract'], bernard: ['chiffrage'] },
-    3: { all: ['photo_vache', 'matinale', 'donateur'], marion: ['rapport_police'], leon: ['caisse_usine'], bernard: ['lettre_ue'] },
-    4: { all: ['greffe', 'plafond', 'fronde', 'meeting_son', 'meeting_video', 'meeting_discours', 'comptes_campagne', 'meeting'] },
+    3: { all: ['photo_vache', 'plateau_terroir', 'matinale', 'donateur'], marion: ['rapport_police'], leon: ['caisse_usine'], bernard: ['lettre_ue'] },
+    4: { all: ['greffe', 'plafond', 'fronde', 'meeting_son', 'meeting_video', 'meeting_discours', 'comptes_campagne', 'meeting'], marion: ['reglement_securite'], leon: ['banderole_zenith'], bernard: ['devis_zenith'] },
   };
   C.EXTRA_REQ = (hero, n) => ((EXTRA[n] || {}).all || []).concat((EXTRA[n] || {})[hero] || []);
 
@@ -6185,16 +6214,18 @@ AK.config({
   //   '#t1'/'#t2' : soirées électorales
   C.ORDRE = (hero, opts = {}) => {
     const H = C.HSEQ[hero];
-    const o = ['ligne', '+dossier_fin', 'financement', '+amendement', 'plf'];
+    const o = ['ligne', '+dossier_fin', 'financement', '+amendement'];
+    o.push(hero === 'marion' ? '+petition_artisans' : hero === 'leon' ? '+usines_listees' : '+rapport_comptes');
+    o.push('plf');
     if (opts.optionnels !== false) o.push('sondage', 'fuite');
     o.push('|2', '+gilet', ...(opts.optionnels !== false ? ['+doleances'] : []), 'greve', 'patronat', 'crise', '+matignon_acces', 'matignon', 'qag', 'choc493', 'mediapart');
     if (hero === 'marion') o.push('+signatures'); if (hero === 'leon') o.push('+tract'); if (hero === 'bernard') o.push('+chiffrage');
     o.push(...H[2]);
-    o.push('|3', '+photo_vache', 'baron', 'paysan', 'attaque', 'matinale');
+    o.push('|3', '+photo_vache', '+plateau_terroir', 'baron', 'paysan', 'attaque', 'matinale');
     if (hero === 'marion') o.push('+rapport_police'); if (hero === 'leon') o.push('+caisse_usine'); if (hero === 'bernard') o.push('+lettre_ue');
     o.push('donateur', ...H[3]);
-    o.push('|4', '+greffe', 'parrainages', 'plafond', ...H[4], 'fronde', '+meeting_son', '+meeting_video', '+meeting_discours', '+comptes_campagne', 'meeting');
-    o.push('|5', '+maquillage', 'd_budget', 'd_secu', 'd_europe', 'd_pouvoir', '#t1', 'duel_retraites', 'duel_institutions', 'duel_ecologie', 'duel_barrage', '+a_vote', '#t2');
+    o.push('|4', '+greffe', hero === 'marion' ? '+reglement_securite' : hero === 'leon' ? '+banderole_zenith' : '+devis_zenith', 'parrainages', 'plafond', ...H[4], 'fronde', '+meeting_son', '+meeting_video', '+meeting_discours', '+comptes_campagne', 'meeting');
+    o.push('|5', '+maquillage', hero === 'marion' ? '+fiche_stats' : hero === 'leon' ? '+fiche_salaires' : '+fiche_dette', 'd_budget', 'd_secu', 'd_europe', 'd_pouvoir', '#t1', 'duel_retraites', 'duel_institutions', 'duel_ecologie', 'duel_barrage', '+a_vote', '#t2');
     return o;
   };
 })(globalThis.AK);
@@ -8064,6 +8095,66 @@ npc6('militante', 'Zoé Lanvin, militante associative', '#c8f0b8', { female: tru
   it('enveloppe_scellee', 'enveloppe fermée', 'enveloppe', 'L\'enveloppe contient votre bulletin. Direction l\'urne, après l\'émargement.', '#8ab0e8');
   // ---- V4 : combinaison note du Trésor + fiche de question ----
   it('fiche_question_chiffree', 'question chiffrée (note du Trésor)', 'fiche', 'Votre question orale, étayée par les chiffres confidentiels du Trésor : deux minutes de preuves.', '#fff0c0');
+})(globalThis.AK);
+
+
+/* ===== game/items/items-v5.js ===== */
+// ============================================================================
+//  V17 — objets des énigmes « chaîne du terroir », « énigmes propres à chaque candidat » et des fausses pistes.
+//  Données pures : le câblage (hotspots, PNJ) est dans scenes/zz-enigmes-v5.js.
+// ============================================================================
+(function (AK) {
+  const it = (id, name, icon, desc, color, extra) => AK.item(Object.assign({ id, name, icon, desc, iconColor: color }, extra));
+
+  // ---- chaîne du terroir (chapitre 3 : Salon → Colette → Salon → plateau télé) ----
+  it('fromage_aop', 'camembert AOP', 'cheese', 'Un camembert de Normandie, étiqueté AOP. Étiqueté, oui. Certifié, c\'est une autre histoire : demandez à une éleveuse.', '#f2e6b0');
+  it('vin_rouge', 'bouteille de rouge', 'bottle', 'Un rouge de pays, millésime respectable. À consommer avec modération, et avec un fromage.', '#7a1f2e');
+  it('fromage_certifie', 'camembert certifié par Colette', 'cheese', 'Colette l\'a palpé, reniflé, approuvé : « Ça, c\'est du vrai. » Il lui manque un compagnon de plateau.', '#f6e9a0', {
+    with: { vin_rouge: ['Le fromage de Colette, le rouge du stand : un plateau digne d\'une table de ministre.', { sfx: 'ok' }, { lose: 'fromage_certifie' }, { lose: 'vin_rouge' }, { get: 'plateau_terroir_obj' }] },
+  });
+  it('plateau_terroir_obj', 'plateau du terroir', 'bag', 'Un camembert certifié, une bouteille de rouge, un couteau : le décor idéal d\'une séquence « la France des terroirs » à la télévision.', '#a8743a');
+
+  // ---- ch.1 : une énigme par candidat (QG ↔ commission des finances) ----
+  it('coupure_artisans', 'coupure de presse sur les artisans', 'paper', 'Un article sur les artisans étranglés par les charges : exactement le sujet de Marion Castelle.', '#e8e4d8');
+  it('petition', 'pétition en ligne des artisans', 'paper', 'La coupure, scannée et mise en ligne : 12 000 signatures en une nuit. Inès saura quoi en faire.', '#dce8f4');
+  it('liste_usines', 'liste des usines menacées', 'paper', 'Onze usines, onze sites, onze plans de licenciement. Épinglée au tableau par un militant discret.', '#f4e0d0');
+  it('rapport_cour', 'rapport de la Cour des comptes', 'book', 'Un rapport de 400 pages avec une seule page qui compte. Bernard Lamy la connaît par cœur.', '#2a4a8a');
+
+  // ---- ch.4 : meeting et comptes de campagne ----
+  it('extrait_reglement', 'extrait du règlement de sécurité', 'paper', 'Les consignes de sécurité d\'un grand rassemblement : issues, jauges, vigiles. Le régisseur du Zénith en réclame un exemplaire à jour.', '#fff0c0');
+  it('banderole', 'banderole du meeting', 'rope', 'Une longue banderole roulée. Il reste à la suspendre quelque part de visible.', '#c83a3a');
+  it('devis_concurrent', 'devis concurrent du Zénith', 'paper', 'Un devis moins cher pour la même sono : l\'argument qui fait baisser une facture.', '#f6f0dc');
+
+  // ---- ch.5 : fiches de plateau (une par candidat) ----
+  it('fiche_stats', 'fiche de chiffres de la délinquance', 'paper', 'Les chiffres de la délinquance, commune par commune. À glisser dans les notes de la présentatrice.', '#e8e4d8');
+  it('fiche_salaires', 'fiche des salaires', 'paper', 'Salaires médians, écarts, inflation : le débat se jouera sur le pouvoir d\'achat.', '#f4e0d0');
+  it('fiche_dette', 'fiche sur la dette', 'paper', 'La dette en pourcentage du PIB, expliquée en deux colonnes. Les téléspectateurs adorent les colonnes.', '#dce8f4');
+
+  // ---- fausses pistes : inutiles, mais elles ont de la répartie ----
+  it('parapluie', 'parapluie oublié', 'default', 'Un grand parapluie noir, oublié par un visiteur. Il pleut des promesses plus souvent que de l\'eau.', '#2a2a32', {
+    with: { basile: ['« Un parapluie ? Les sondages disent qu\'il fera beau. » Basile le repose, soupçonneux.'], ines: ['Inès le regarde, perplexe : « Vous allez porter ça devant les caméras ? Un candidat qui s\'abrite, c\'est un candidat qui recule. »'], television: ['Je brandis le parapluie face à la télé. Même les éditorialistes ne se sentent pas visés.'] } });
+  it('telecommande', 'télécommande', 'default', 'La télécommande de la télé du QG. Elle ne change pas de chaîne : elle change seulement de commentateur.', '#3a3a42', {
+    with: { television: ['Je zappe : chaîne info, chaîne info, chaîne info. Un même visage, trois bandeaux différents.'], basile: ['Basile : « Éteignez ça. Non, laissez. Non, éteignez. » Il est partagé, comme la gauche.'] } });
+  it('drapeau_miniature', 'drapeau européen miniature', 'default', 'Un petit drapeau étoilé, de ceux qu\'on agite aux sommets. Douze étoiles, et pas un seul vote.', '#1d3f9a', {
+    with: { rapporteur: ['Le rapporteur général hausse un sourcil : « Un drapeau ? Je préférerais un gage. »'], table_cf: ['Je plante le petit drapeau dans le tapis vert. La commission ne bronche pas : elle en a vu d\'autres.'] } });
+  it('tasse_cafe', 'tasse de café froid', 'default', 'Un café oublié depuis la séance de nuit. Il est maintenant à la température exacte de la dette publique : tiède et inquiétant.', '#6a4a2a', {
+    with: { rapporteur: ['« Merci, mais le budget me donne assez de sueurs froides. » Le rapporteur refuse poliment.'], table_cf: ['Je repose la tasse sur la table. Une auréole de plus sur le tapis vert : la commission est habituée aux taches.'] } });
+  it('saucisson_sec', 'saucisson sec', 'default', 'Un saucisson du terroir, offert d\'office à tout candidat qui passe. Tradition électorale, hélas peu protéinée en voix.', '#8a3a2a', {
+    with: { gerard: ['Gérard Pontoise en coupe trois tranches : « Un candidat qui mange, c\'est un candidat qui écoute. » Il ne dit pas ce qu\'il pense du vôtre.'], colette: ['Colette soupèse : « Pas mal. Mais le mien est meilleur. » Elle ne donne pas son adresse.'], photographe: ['Le photographe : « Un saucisson ? Ça ne fait pas la une, sauf s\'il est dans la bouche d\'un ministre. »'] } });
+  it('brin_foin', 'brin de foin', 'default', 'Un brin de foin. Le candidat « proche du terrain » en glisse un dans la bouche pour la photo. Déconseillé aux allergiques.', '#c8b050', {
+    with: { vache: ['Marianne la vache mâchonne le foin que je lui tends, indifférente. Aucune promesse n\'a jamais eu cet effet sur elle.'], colette: ['Colette : « Du foin de l\'an dernier. Vous vous moquez de ma vache ? »'] } });
+  it('peigne', 'peigne de la coiffeuse', 'default', 'Un fin peigne en écaille. Rien à faire contre l\'épi de la vérité.', '#6a4a8a', {
+    with: { sonia: ['Sonia : « Gardez-le, monsieur le candidat, mais ne le sortez pas à l\'antenne. » Les cheveux, c\'est comme les promesses : mieux vaut les coiffer discrètement.'] } });
+  it('cache_objectif', 'cache d\'objectif', 'default', 'Le cache en plastique d\'une caméra de plateau. Utile pour que la caméra ne voie pas ce qu\'elle ne doit pas voir.', '#2a2a32', {
+    with: { sonia: ['Sonia sourit : « Le cache sur la caméra ? Ça, c\'est la technique du candidat pendant les questions gênantes. »'], camera1: ['Je le remets sur l\'objectif. La caméra ne bronche pas ; le régisseur, si.'] } });
+  it('magazine_people', 'magazine people', 'default', 'En couverture : une princesse, un footballeur, un divorce. À l\'intérieur : un sondage, enfin presque.', '#e85a8a', {
+    with: { kiosque: ['Le buraliste du kiosque : « Vous ne l\'avez pas payé, hein ? » Je repose le magazine avec un sourire de candidat.'], journal_du_jour: ['Je glisse le magazine dans le journal du jour. L\'ensemble ne vaut pas mieux que la somme de ses parties.'] } });
+  it('eau_vip', 'bouteille d\'eau de la loge', 'bottle', 'Une bouteille d\'eau de la loge des VIP : verre en cristal sur le plateau, plastique ailleurs.', '#8ab0e8', {
+    with: { regisseur: ['Le régisseur : « Gardez-la : le candidat doit rester hydraté, pas déshydraté de projets. »'], miroir_loge: ['Je bois une gorgée devant le miroir. L\'homme politique en face me regarde avec la gravité de l\'eau plate.'] } });
+  it('trombones', 'boîte de trombones', 'default', 'Une boîte de trombones de la Commission. Un compte de campagne, ça se relie, pas ça se trombone.', '#8a909c', {
+    with: { delmas: ['Delmas : « Des trombones ? Un contrôleur de la Commission n\'en voit jamais assez. » Il en prend un pour la route.'], bureau_cnc: ['Je range les trombones dans le tiroir. Même les trombones, ici, passent un contrôle.'] } });
+  it('dessin_enfant', 'dessin d\'enfant', 'paper', 'Un soleil, un bonhomme jaune et un cœur rouge : « Papa vote ». L\'urne vaut bien la photo de famille.', '#f4e0a0', {
+    with: { assesseur: ['L\'assesseur sourit : « Gardez-le, il porte chance. Mais pas dans l\'isoloir, hein. »'], president_bv: ['Le président du bureau : « Les dessins, c\'est affiché au mur. Pas dans l\'urne. » Il rit dans sa cravate.'] } });
 })(globalThis.AK);
 
 
@@ -10443,6 +10534,110 @@ AK.piece({
 })();
 
 
+/* ===== game/scenes/zz-enigmes-v5.js ===== */
+// ============================================================================
+//  V17 — énigmes supplémentaires, câblées SANS toucher aux scènes d'origine :
+//   · une chaîne d'objets en 5 gestes (chapitre 3 : Salon → Colette → plateau télé)
+//   · une énigme propre à chaque candidat dans les chapitres 1, 4 et 5
+//   · douze fausses pistes (objets inutiles, mais avec une réplique)
+//  Chargé après toutes les scènes : on y AJOUTE des réactions (« si condition, nouveau comportement, sinon ancien »).
+//  L'ancien comportement d'un hotspot est toujours conservé comme repli : aucune régression possible sur l'existant.
+// ============================================================================
+(function (AK) {
+  const S = AK.reg.scenes;
+  const H = (sc, id) => { const h = (S[sc].hotspots || []).find((x) => x.id === id); if (!h) throw new Error('V17 : hotspot introuvable ' + sc + '.' + id); return h; };
+  const N = (sc, id) => { const n = (S[sc].npcs || []).find((x) => x.id === id); if (!n) throw new Error('V17 : PNJ introuvable ' + sc + '.' + id); return n; };
+  // ajoute une réaction conditionnelle sur un verbe ; l'ancienne réaction (si elle existe) sert de repli
+  function hook(t, verb, cond, then) {
+    t.on = t.on || {};
+    const old = t.on[verb];
+    t.on[verb] = [Object.assign({ if: cond, then }, old ? { else: old } : {})];
+  }
+  function withItem(t, item, script) { t.with = t.with || {}; if (t.with[item]) throw new Error('V17 : réaction déjà définie ' + item); t.with[item] = script; }
+
+  // ---------------------------------------------------------------- chaîne du terroir (chapitre 3) ----
+  hook(H('salon', 'stand_fromages'), 'pick', '!h_fromage', ['Le fromager me glisse un camembert AOP dans les mains : « Pour le candidat, la maison offre. »', { sfx: 'pickup' }, { flag: 'h_fromage' }, { get: 'fromage_aop' }]);
+  hook(H('salon', 'stand_vins'), 'pick', '!h_vin', ['Une bouteille de rouge, étiquette soignée. Le vigneron fait mine de ne pas voir : « Le Salon est un lieu d\'échange. »', { sfx: 'pickup' }, { flag: 'h_vin' }, { get: 'vin_rouge' }]);
+  withItem(N('salon', 'colette'), 'fromage_aop', [
+    { say: 'Donnez. Je le reconnais à l\'odeur… Croûte fleurie, cœur qui coule. C\'est du vrai.', who: 'colette' },
+    { say: 'Il est certifié, candidat : la prochaine fois, regardez l\'étiquette avant de manger la pub.', who: 'colette' },
+    { sfx: 'ok' }, { lose: 'fromage_aop' }, { get: 'fromage_certifie' }]);
+  withItem(N('studio', 'sonia'), 'plateau_terroir_obj', [
+    { if: 'seq_plateau_terroir', then: ['Le plateau du terroir est déjà posé sur le plateau télé.'], else: [
+      { say: 'Un plateau de produits du terroir ? Ça, c\'est de la télé. Je le pose entre vous et les caméras.', who: 'sonia' },
+      { lose: 'plateau_terroir_obj' }, { call: 'gain', args: { id: 'plateau_terroir' } }] }]);
+
+  // ---------------------------------------------------------------- ch.1 : propre à chaque candidat ----
+  hook(H('qg', 'revue_presse'), 'pick', ['hero:marion', '!h_coupure'], [
+    'Un article sur les artisans étranglés par les charges. Pile dans ma ligne. Je le découpe.', { sfx: 'pickup' }, { flag: 'h_coupure' }, { get: 'coupure_artisans' }]);
+  withItem(H('qg', 'ordinateur'), 'coupure_artisans', [
+    'Je scanne la coupure, je crée la page, je publie : « Sauvons nos artisans ». Douze mille signatures avant minuit.', { sfx: 'ok' }, { lose: 'coupure_artisans' }, { get: 'petition' }]);
+  withItem(N('qg', 'ines'), 'petition', [
+    { if: 'seq_petition_artisans', then: ['Inès a déjà la pétition en main.'], else: [
+      { say: 'Douze mille signatures ? En une nuit ? Je la mets en une du site.', who: 'ines' },
+      { lose: 'petition' }, { call: 'gain', args: { id: 'petition_artisans' } }] }]);
+  hook(H('qg', 'tableau_liege'), 'pick', ['hero:leon', '!h_usines'], [
+    'Parmi les fiches punaisées, un papier discret : la liste des usines menacées. Un militant l\'a épinglée pour moi.', { sfx: 'pickup' }, { flag: 'h_usines' }, { get: 'liste_usines' }]);
+  withItem(N('commission_finances', 'rapporteur'), 'liste_usines', [
+    { if: 'seq_usines_listees', then: ['Le rapporteur a déjà la liste.'], else: [
+      { say: 'Onze usines… La commission devrait peut-être regarder les chiffres de plus près. Je joins votre liste au rapport.', who: 'rapporteur' },
+      { lose: 'liste_usines' }, { call: 'gain', args: { id: 'usines_listees' } }] }]);
+  hook(H('qg', 'etagere'), 'open', ['hero:bernard', '!h_rapport'], [
+    'Dans les classeurs, un rapport de la Cour des comptes, avec ma page cornée. Autant le prendre.', { sfx: 'pickup' }, { flag: 'h_rapport' }, { get: 'rapport_cour' }]);
+  hook(H('qg', 'etagere'), 'pick', ['hero:bernard', '!h_rapport'], [
+    'Dans les classeurs, un rapport de la Cour des comptes, avec ma page cornée. Autant le prendre.', { sfx: 'pickup' }, { flag: 'h_rapport' }, { get: 'rapport_cour' }]);
+  withItem(N('commission_finances', 'rapporteur'), 'rapport_cour', [
+    { if: 'seq_rapport_comptes', then: ['Le rapporteur a déjà le rapport.'], else: [
+      { say: 'La page 212, bien sûr. Vous l\'aviez cornée. Merci, c\'est exactement l\'argument qui manquait au gage.', who: 'rapporteur' },
+      { lose: 'rapport_cour' }, { call: 'gain', args: { id: 'rapport_comptes' } }] }]);
+
+  // ---------------------------------------------------------------- ch.4 : propre à chaque candidat ----
+  hook(H('cnccfp', 'affichage_regl'), 'pick', ['hero:marion', '!h_reglement'], [
+    'Le règlement de sécurité des grands rassemblements : à photocopier, je n\'en ai pas besoin ici, mais le régisseur du Zénith oui.', { sfx: 'pickup' }, { flag: 'h_reglement' }, { get: 'extrait_reglement' }]);
+  withItem(N('meeting', 'regisseur'), 'extrait_reglement', [
+    { if: 'seq_reglement_securite', then: ['Le régisseur a déjà son exemplaire.'], else: [
+      { say: 'Les jauges, les issues, les vigiles… vous pensez à tout. Marion Castelle, la sécurité avant le spectacle.', who: 'regisseur' },
+      { lose: 'extrait_reglement' }, { call: 'gain', args: { id: 'reglement_securite' } }] }]);
+  hook(H('meeting', 'flightcases'), 'pick', ['hero:leon', '!h_banderole'], [
+    'Au fond d\'un flightcase : une banderole rouge, ourlée à la main par des militants. Je la prends.', { sfx: 'pickup' }, { flag: 'h_banderole' }, { get: 'banderole' }]);
+  withItem(H('meeting', 'pupitre_scene'), 'banderole', [
+    { if: 'seq_banderole_zenith', then: ['La banderole est déjà accrochée.'], else: [
+      'Je déroule la banderole sur le pupitre : « Le travail d\'abord ». Le régisseur la fixe avec trois sangles.', { lose: 'banderole' }, { call: 'gain', args: { id: 'banderole_zenith' } }] }]);
+  hook(H('cnccfp', 'classeurs_cnc'), 'pick', ['hero:bernard', '!h_devis'], [
+    'Un devis concurrent de la sono du Zénith, glissé dans un classeur. Utile pour négocier une facture.', { sfx: 'pickup' }, { flag: 'h_devis' }, { get: 'devis_concurrent' }]);
+  withItem(N('meeting', 'regisseur'), 'devis_concurrent', [
+    { if: 'seq_devis_zenith', then: ['Le devis a déjà été discuté.'], else: [
+      { say: 'Un devis concurrent… Bon, j\'appelle le chef de la sono pour revoir sa facture. Vous négociez bien, monsieur Lamy.', who: 'regisseur' },
+      { lose: 'devis_concurrent' }, { call: 'gain', args: { id: 'devis_zenith' } }] }]);
+
+  // ---------------------------------------------------------------- ch.5 : fiches de plateau (bonus) ----
+  hook(H('studio', 'regie'), 'pick', ['hero:marion', '!h_fiche'], [
+    'Dans le tiroir de la régie, une fiche de chiffres sur la délinquance, préparée par la rédaction. Je la glisse dans ma poche.', { sfx: 'pickup' }, { flag: 'h_fiche' }, { get: 'fiche_stats' }]);
+  hook(H('studio', 'bureau_plateau'), 'pick', ['hero:leon', '!h_fiche'], [
+    'Sur le bureau du plateau, une fiche des salaires médians, annotée au feutre rouge. Je la prends.', { sfx: 'pickup' }, { flag: 'h_fiche' }, { get: 'fiche_salaires' }]);
+  hook(H('studio', 'pupitre'), 'pick', ['hero:bernard', '!h_fiche'], [
+    'Sous le pupitre, une fiche sur la dette, deux colonnes bien nettes. Je la prends.', { sfx: 'pickup' }, { flag: 'h_fiche' }, { get: 'fiche_dette' }]);
+  withItem(N('studio', 'sonia'), 'fiche_stats', [{ say: 'Des chiffres solides, merci. La présentatrice les aura sous les yeux pendant le débat.', who: 'sonia' }, { lose: 'fiche_stats' }, { call: 'gain', args: { id: 'fiche_stats' } }]);
+  withItem(N('studio', 'sonia'), 'fiche_salaires', [{ say: 'Le pouvoir d\'achat, c\'est le sujet du jour. Je la donne à la présentatrice.', who: 'sonia' }, { lose: 'fiche_salaires' }, { call: 'gain', args: { id: 'fiche_salaires' } }]);
+  withItem(N('studio', 'sonia'), 'fiche_dette', [{ say: 'Deux colonnes, un seul message. La présentatrice adorera.', who: 'sonia' }, { lose: 'fiche_dette' }, { call: 'gain', args: { id: 'fiche_dette' } }]);
+
+  // ---------------------------------------------------------------- fausses pistes ----
+  const herring = (sc, hs, item, flag, texte) => hook(H(sc, hs), 'pick', '!' + flag, [texte, { sfx: 'pickup' }, { flag }, { get: item }]);
+  herring('qg', 'portemanteau', 'parapluie', 'h_parapluie', 'Au pied du portemanteau, un grand parapluie noir qui n\'appartient à personne. Je le prends : on ne sait jamais avec les sondages.');
+  herring('qg', 'television', 'telecommande', 'h_telecommande', 'La télécommande traîne sous la télé. Je la ramasse : seul moyen de changer de commentateur.');
+  herring('commission_finances', 'drapeaux_cf', 'drapeau_miniature', 'h_drapeau', 'Un petit drapeau européen miniature pend à la hampe. Je le détache. Personne ne regarde.');
+  herring('commission_finances', 'table_cf', 'tasse_cafe', 'h_tasse', 'Une tasse de café froid reste sur la table, relique de la séance de nuit. Je la prends : mon geste civique du jour.');
+  herring('salon', 'stand_regions', 'saucisson_sec', 'h_saucisson', 'Un saucisson sec pend au crochet du stand. Le fromager me le tend d\'un geste large : « Le candidat n\'a jamais assez mangé. »');
+  herring('salon', 'foin', 'brin_foin', 'h_foin', 'Je tire un brin de foin de la botte. Pour la photo, rien ne vaut un candidat qui mâchouille quelque chose.');
+  herring('studio', 'coiffeuse', 'peigne', 'h_peigne', 'Un fin peigne en écaille repose sur la coiffeuse. Je m\'en empare : un candidat bien coiffé, c\'est déjà un programme.');
+  herring('studio', 'camera1', 'cache_objectif', 'h_cache', 'Le cache en plastique de la caméra pend à sa chaîne. Je le décroche. Je saurai en faire un geste d\'autorité.');
+  herring('palais_royal', 'kiosque', 'magazine_people', 'h_magazine', 'Je feuillette un magazine people du kiosque : le buraliste tousse, je le garde sous le bras.');
+  herring('meeting', 'table_loge', 'eau_vip', 'h_eau', 'Sur la table de la loge, une bouteille d\'eau minérale étiquetée « VIP ». Servez‑vous, c\'est ma loge.');
+  herring('cnccfp', 'bureau_cnc', 'trombones', 'h_trombones', 'Dans le tiroir, une boîte de trombones. La Commission en consomme plus que ses candidats.');
+  herring('bureau_vote', 'dessins_enfants', 'dessin_enfant', 'h_dessin', 'Un dessin d\'enfant s\'est décroché du mur : un soleil, un papa, un cœur. Je le range dans ma poche.');
+})(globalThis.AK);
+
+
 /* ===== game/tests/00-donner.js ===== */
 // « Donner X à <PNJ> » doit marcher comme « Utiliser X avec <PNJ> » : le moteur lit `give` pour le verbe Donner et `with` pour Utiliser,
 // or toutes nos énigmes déclarent `with` (sur le PNJ, ou sur l'objet). On complète `give` à partir de `with`, sans jamais écraser un `give`
@@ -10553,6 +10748,19 @@ AK.piece({
           ['pick', 'cachet_expert'], ['use', 'cachet_expert', 'classeur_comptes'], ['expect', { has: ['classeur_certifie'] }],
           ['use', 'classeur_certifie', 'delmas'], ['expect', { flags: ['seq_comptes_campagne'] }]);
       },
+      plateau_terroir: () => {
+        aller('salon'); P(['pick', 'stand_fromages'], ['pick', 'stand_vins'], ['use', 'fromage_aop', 'colette'], ['expect', { has: ['fromage_certifie'] }], ['use', 'fromage_certifie', 'vin_rouge'], ['expect', { has: ['plateau_terroir_obj'] }]);
+        aller('studio'); P(['use', 'plateau_terroir_obj', 'sonia'], ['expect', { flags: ['seq_plateau_terroir'] }]);
+      },
+      petition_artisans: () => { aller('qg'); P(['pick', 'revue_presse'], ['use', 'coupure_artisans', 'ordinateur'], ['use', 'petition', 'ines'], ['expect', { flags: ['seq_petition_artisans'] }]); },
+      usines_listees: () => { aller('qg'); P(['pick', 'tableau_liege']); aller('commission_finances'); P(['use', 'liste_usines', 'rapporteur'], ['expect', { flags: ['seq_usines_listees'] }]); },
+      rapport_comptes: () => { aller('qg'); P(['open', 'etagere']); aller('commission_finances'); P(['use', 'rapport_cour', 'rapporteur'], ['expect', { flags: ['seq_rapport_comptes'] }]); },
+      reglement_securite: () => { aller('cnccfp'); P(['pick', 'affichage_regl']); aller('meeting'); P(['use', 'extrait_reglement', 'regisseur'], ['expect', { flags: ['seq_reglement_securite'] }]); },
+      banderole_zenith: () => { aller('meeting'); P(['pick', 'flightcases'], ['use', 'banderole', 'pupitre_scene'], ['expect', { flags: ['seq_banderole_zenith'] }]); },
+      devis_zenith: () => { aller('cnccfp'); P(['pick', 'classeurs_cnc']); aller('meeting'); P(['use', 'devis_concurrent', 'regisseur'], ['expect', { flags: ['seq_devis_zenith'] }]); },
+      fiche_stats: () => { aller('studio'); P(['pick', 'regie'], ['use', 'fiche_stats', 'sonia'], ['expect', { flags: ['seq_fiche_stats'] }]); },
+      fiche_salaires: () => { aller('studio'); P(['pick', 'bureau_plateau'], ['use', 'fiche_salaires', 'sonia'], ['expect', { flags: ['seq_fiche_salaires'] }]); },
+      fiche_dette: () => { aller('studio'); P(['pick', 'pupitre'], ['use', 'fiche_dette', 'sonia'], ['expect', { flags: ['seq_fiche_dette'] }]); },
       maquillage: () => { aller('studio'); P(['pick', 'poudrier'], ['use', 'poudre', 'coiffeuse'], ['expect', { flags: ['seq_maquillage'] }]); },
     };
     const fait = (id) => {
@@ -10620,7 +10828,7 @@ AK.piece({
   const LELI = { ligne: 'A', plf: 'C', sondage: 'A', fuite: 'B', financement: 'B', greve: 'A', patronat: 'A', crise: 'C', matignon: 'A', syndicats: 'B', baron: 'B', paysan: 'C', attaque: 'A', fonction_publique: 'C', union_gauche: 'A', parrainages: 'B', quartiers: 'B', d_budget: 'C', d_secu: 'A', d_europe: 'B', d_pouvoir: 'C', choc493: 'B', mediapart: 'B', donateur: 'A', plafond: 'B', fronde: 'B', isf: 'B', salaires: 'B', capitaux: 'B', ecologie: 'A', greve_generale: 'A', services: 'A' };
   AK.walkthrough('Défaite — éliminé au premier tour', partie('leon', LELI, [], 'premier_tour').concat([['expect', { flags: ['partie_perdue'], noflags: ['qualifie', 'elu'], ended: true }]]));
   // Défaite 3 — Bernard : qualifié mais battu au second tour
-  const BBAT = { ligne: 'C', plf: 'C', sondage: 'A', fuite: 'B', financement: 'C', greve: 'A', patronat: 'B', crise: 'A', matignon: 'B', bercy: 'A', baron: 'B', paysan: 'C', attaque: 'C', retraites: 'B', maires: 'C', parrainages: 'C', union_centre: 'C', d_budget: 'C', d_secu: 'B', d_europe: 'B', d_pouvoir: 'B', duel_retraites: 'C', duel_institutions: 'B', duel_ecologie: 'B', duel_barrage: 'A', choc493: 'B', mediapart: 'B', donateur: 'A', plafond: 'B', fronde: 'B', eurogroupe: 'C', cac40: 'A', elysee: 'C', reformes: 'C', haute_fonction: 'A', spread: 'C' };
+  const BBAT = { ligne: 'C', plf: 'C', sondage: 'A', fuite: 'B', financement: 'C', greve: 'A', patronat: 'B', crise: 'A', matignon: 'B', bercy: 'A', baron: 'B', paysan: 'C', attaque: 'C', retraites: 'B', maires: 'C', parrainages: 'C', union_centre: 'C', d_budget: 'C', d_secu: 'B', d_europe: 'B', d_pouvoir: 'B', duel_retraites: 'C', duel_institutions: 'B', duel_ecologie: 'B', duel_barrage: 'A', choc493: 'B', mediapart: 'A', donateur: 'A', plafond: 'B', fronde: 'B', eurogroupe: 'C', cac40: 'A', elysee: 'C', reformes: 'C', haute_fonction: 'A', spread: 'C' };
   AK.walkthrough('Défaite — battu au second tour', jusquAuBout('bernard', BBAT, [['expect', { flags: ['qualifie', 'partie_perdue'], noflags: ['elu'], ended: true }]]));
   // Défaite 4 — Marion : crise de crédibilité en plein duel (crédibilité ≤ 3)
   const MCRED = { ligne: 'A', plf: 'A', sondage: 'A', fuite: 'A', financement: 'A', greve: 'A', patronat: 'A', crise: 'A', matignon: 'A', censure: 'A', qag: 'A', matinale: 'C', meeting: 'A', baron: 'B', paysan: 'A', attaque: 'B', union_droites: 'B', pouvoir_local: 'A', parrainages: 'C', immigration: 'B', d_budget: 'A', d_secu: 'A', d_europe: 'A', d_pouvoir: 'A', duel_retraites: 'A', duel_institutions: 'A', duel_ecologie: 'C', duel_barrage: 'B', choc493: 'B', mediapart: 'B', donateur: 'B', plafond: 'B', fronde: 'A', police: 'B', polemiste: 'B', plafond_verre: 'B', enclaves: 'B', metropoles: 'A', fait_divers: 'A' };
