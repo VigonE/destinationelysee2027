@@ -3784,6 +3784,7 @@ function createMusic(a, out) {
     const apres = sondage(st)[h], opp2 = adversaire(st, h), d1 = opp2 ? duels(st, h)[opp2] : null;
     let ligne = 'SONDAGE — ' + nomc(h) + ' : ' + f1(avant) + ' % → ' + f1(apres) + ' % (' + signe(apres - avant, 1) + ')';
     if (opp2 && d1 !== null) ligne += '   ·   Face à ' + nomc(opp2) + ' au second tour : ' + Math.round(d1) + ' %' + (opp === opp2 && d0 !== null ? ' (' + signe(d1 - d0, 1) + ')' : '');
+    await api.run([{ call: 'infos', args: { id: a.id, l: a.l, nom: nomc(h), fiche: o.fiche, avant, apres } }]);   // V19 : flash d'infos (navigateur seulement)
     await api.run([{ sfx: apres - avant >= 0 ? 'ok' : 'buzz' }, { say: ligne, who: 'narrator' },
       { say: 'EFFETS — ' + (eff(v) || 'aucun effet chiffré') + (info.extra ? '  ·  LASSITUDE (même ligne trop souvent)' : ''), who: 'narrator' },
       { say: 'FICHE D\'IMPACT — ' + o.fiche, who: 'narrator' }]);
@@ -5925,6 +5926,272 @@ AK.config({
       menu: { choices },
     } });
   };
+})(globalThis.AK);
+
+
+/* ===== game/flash-data.js ===== */
+// ============================================================================
+//  V19 — FLASH D'INFOS : la presse réagit à chaque choix de campagne (données pures ; la mise en scène est dans zz-zinfos.js).
+//  AK.FLASH[idSéquence] = { f: 'c' | 'j' | 't', A: [titre, sous-titre], B: […], C: […], D: […] }
+//    f : format de l'écran — 'c' chaîne d'info en continu · 'j' une de journal · 't' fil de réseau social
+//    titre / sous-titre : `{c}` est remplacé par le nom du candidat joué (Castelle, Marteau, Lamy). Pas d'emoji (polices non garanties).
+//  Le titre et le sous-titre parlent du CHOIX (pas du chiffre) : l'effet chiffré (sondage avant/après) s'affiche à côté, automatiquement.
+//  Ajouter une séquence = ajouter une entrée ici ; sans entrée, un flash générique est construit à partir de la fiche d'impact.
+// ============================================================================
+(function (AK) {
+  const F = (AK.FLASH = AK.FLASH || {});
+  const add = (o) => Object.assign(F, o);
+
+  add({
+    // ---- chapitre 1 : le budget ----
+    ligne: { f: 'j', A: ['{c} : « On parle à la colère »', 'Rupture totale : le QG choisit le feu, les éditorialistes cherchent un extincteur.'], B: ['{c} : « sérieux et cap »', 'La campagne des responsables : sobre, cravatée, gris perle.'], C: ['{c} : « le meilleur de chaque camp »', 'Un programme patchwork : chacun y trouve sa couleur, personne son slogan.'] },
+    plf: { f: 'c',
+      A: ['{c} votera la censure : « ce budget fait payer retraités et fonctionnaires »', 'Le gouvernement tremble ; Bercy cherche un plan B.'],
+      B: ['{c} refuse la censure : « sans budget, c\'est le chaos »', 'On amendera. Les censeurs appellent ça du courage tiède.'],
+      C: ['Deux cents amendements de {c} : le Parlement s\'équipe en ramettes', 'Ciblés, chiffrés, déposés. L\'art du compromis armé.'],
+      D: ['Amendement {c} : recevable, chiffré, gagé', 'Le rapporteur général admet : « C\'est… correct. »'] },
+    financement: { f: 't',
+      A: ['{c} lance ses mille petits dons : les grands meetings, financés par vous.', 'Pas de gros chèques, mais beaucoup de petits tickets.'],
+      B: ['{c} signe un prêt bancaire adossé au remboursement de l\'État (au-delà de 5 %).', 'On emprunte pour gagner, on rembourse si on dépasse 5 %.'],
+      C: ['{c} organise des dîners de levée de fonds chez des donateurs fortunés.', 'La nappe est blanche, les chèques aussi.'] },
+    sondage: { f: 'j',
+      A: ['{c} cible les abstentionnistes : « On les réveille »', 'Opération réveil-matin : des millions de Français ne se lèvent pas pour voter.'],
+      B: ['{c} cible les modérés déçus : « On arrondit les angles »', 'Un équilibre au millimètre : le sourire en coin.'],
+      C: ['{c} : un message par segment', 'Retraités, jeunes, ruraux : le programme sur mesure, en trois versions.'] },
+    fuite: { f: 'c',
+      A: ['« Les Français ont le droit de savoir » : {c} publie la fuite', 'Scandale d\'un côté, transparence de l\'autre : les rédactions applaudissent.'],
+      B: ['{c} saisit la commission de contrôle : « pas de fuite »', 'Le règlement avant le scoop : la presse boude.'],
+      C: ['{c} négocie : portrait favorable contre exclusivité', 'On échange des annonces contre des adjectifs.'] },
+
+    // ---- chapitre 2 : la rue et le Palais ----
+    greve: { f: 't',
+      A: ['{c} soutient le blocage « jusqu\'au bout ».', 'Sur le piquet, personne ne regarde l\'heure. Les automobilistes, si.'],
+      B: ['{c} propose une conférence sociale, tout de suite.', 'Le dialogue : le mot que les piquets entendent le moins vite.'],
+      C: ['{c} vient en soutien moral au piquet, caméras comprises.', 'Un soutien moral, c\'est aussi un angle de caméra.'] },
+    patronat: { f: 'j',
+      A: ['{c} propose un moratoire : « pas un euro de plus aux marchés »', 'Le patronat en perd son stylo ; les marchés, leurs nerfs.'],
+      B: ['{c} s\'engage sur une trajectoire de déficit crédible', 'Le patronat applaudit en silence, ce qui est sa façon d\'applaudir.'],
+      C: ['{c} : un audit des comptes. Après l\'élection.', 'Prudent : un candidat qui sait où mène chaque audit.'] },
+    crise: { f: 'c',
+      A: ['{c} exige l\'état d\'urgence, tout de suite', 'Les rues s\'inquiètent, les plateaux s\'enflamment.'],
+      B: ['{c} appelle au calme : « police de proximité d\'abord »', 'Un ton apaisant dans un pays pressé.'],
+      C: ['{c} file à Marseille devant les caméras', 'Sur place, sur le coup, sur toutes les chaînes.'] },
+    matignon: { f: 'j',
+      A: ['{c} : « Nous ne négocierons pas »', 'Censure et demande de dissolution : Matignon reçoit la facture.'],
+      B: ['{c} négocie : retraites indexées contre renoncement à la censure', 'Un petit pas pour les retraités, un grand pas pour le compromis.'],
+      C: ['{c} demande une loi spéciale : le budget attendra le printemps', 'Le report, version loi : un trimestre de bonne humeur.'],
+      D: ['{c} cite la note du Trésor : « votre trajectoire ne tient pas »', 'La salle devient silencieuse, les dossiers aussi.'] },
+    qag: { f: 'j',
+      A: ['{c} interpelle sur le pouvoir d\'achat : « Les Français n\'en peuvent plus »', 'Le ministre écoute, note, répond à côté.'],
+      B: ['{c} interroge : comment tenir 5 % de déficit sans casser les services publics ?', 'Une question chiffrée, une réponse floue.'],
+      C: ['« Ce gouvernement navigue à vue, et la France avec. »', 'La formule du 20 heures : {c} fait mouche.'],
+      D: ['{c} cite les chiffres du Trésor : le déficit réel, la dette cachée', 'Le gouvernement ne publie pas ses trajectoires : {c}, si.'] },
+    choc493: { f: 'c',
+      A: ['{c} dépose la motion avec toute l\'opposition', 'Unis contre le gouvernement, désunis sur le reste.'],
+      B: ['{c} saisit le Conseil constitutionnel avec soixante députés', 'On ne vote pas la censure, on lance une procédure.'],
+      C: ['{c} laisse les autres déposer la motion', 'On ne votera que si elle peut passer : la prudence de la salle d\'attente.'] },
+    mediapart: { f: 'j',
+      A: ['{c} attaque en diffamation : « une campagne de caniveau »', 'Conférence de presse, tonnerre, avocats : le grand classique.'],
+      B: ['{c} publie ses factures et saisit la Commission des comptes', 'Le mandataire se retire. La transparence, c\'est aussi une forme d\'élégance.'],
+      C: ['{c} : droit de réponse, avocat, puis silence', 'Le Parquet enquête. {c} attend, les caméras aussi.'] },
+    censure: { f: 'c',
+      A: ['{c} : « Votons la censure, ce gouvernement doit tomber »', 'Le Palais-Bourbon retient son souffle.'],
+      B: ['{c} s\'abstient : « pas de crise institutionnelle avant l\'élection »', 'L\'abstention, ce refuge des prudents.'],
+      C: ['{c} conditionne son vote à un geste sur les retraites modestes', 'Marchandage : l\'art du « oui, mais ».'] },
+    union_droites: { f: 'j',
+      A: ['{c} : « Aucune alliance : ni cordon sanitaire, ni compromis »', 'Un mur à droite, un mur à gauche : la campagne en autarcie.'],
+      B: ['{c} propose un accord à Rochas : retrait contre ouverture à la droite', 'Un gouvernement ouvert aux droites, et un candidat qui s\'efface.'],
+      C: ['{c} débauche des élus de la droite classique, un par un', 'Le mercato politique : toujours plus d\'élus, moins de convictions.'] },
+    pouvoir_local: { f: 't',
+      A: ['{c} : TVA baissée sur l\'énergie et bouclier tarifaire pour les ménages.', 'Le panier de courses fait la campagne.'],
+      B: ['{c} : plan d\'investissement local, dotations garanties.', 'Les communes sortent les calculettes.'],
+      C: ['{c} fait la tournée des cafés et des marchés, avec les caméras.', 'Le marché, c\'est comme les plateaux : il faut être au bon angle.'] },
+    immigration: { f: 'c',
+      A: ['{c} durcit : fin du regroupement familial, priorité nationale', 'Le débat devient brûlant. Les associations montent au créneau.'],
+      B: ['{c} régule : plus de moyens pour la justice et l\'intégration', 'Des quotas débattus au Parlement : les débats avancent.'],
+      C: ['{c} propose un référendum sur l\'immigration', 'Le peuple tranchera. Les juristes se lèvent.'] },
+    syndicats: { f: 'j',
+      A: ['{c} appelle à la grève générale contre le budget', 'Le pays s\'arrête, les syndicats font semblant d\'être surpris.'],
+      B: ['{c} propose un front commun de l\'intersyndicale', 'Négocier à plusieurs : la méthode qui ressemble à un sudoku.'],
+      C: ['Meeting géant à Paris pour {c}, caméras en tête', 'Un gala de la contestation. Le service d\'ordre en parle encore.'] },
+    fonction_publique: { f: 'c',
+      A: ['{c} dégèle le point d\'indice et recrute', 'Les syndicats applaudissent ; Bercy se met à compter.'],
+      B: ['{c} : revalorisation ciblée des soignants et enseignants', 'Un geste pour ceux qui tiennent la baraque.'],
+      C: ['{c} convoque des assises nationales des services publics', 'On discute : les services publics adorent les assises.'] },
+    union_gauche: { f: 't',
+      A: ['{c} reste seul : « la rupture, pas le compromis ».', 'Solo ou solitaire ? Les sondages décideront.'],
+      B: ['{c} propose une candidature commune : le mieux placé l\'emporte.', 'Le sondage comme arbitre : un geste de grande audace.'],
+      C: ['{c} propose un pacte de désistement au second tour seulement.', 'Un désistement ? Plus tard, on verra.'] },
+    quartiers: { f: 'j',
+      A: ['{c} veut refonder la police : BAC désarmée, récépissé de contrôle', 'L\'idée choque ou séduit : la rue tranche.'],
+      B: ['{c} : police de proximité, formation et moyens pour la justice', 'Une réforme discrète, mais le sujet fait du bruit.'],
+      C: ['{c} lance une marche pour la justice sociale dans tous les quartiers', 'Un pas après l\'autre, caméras de série.'] },
+    bercy: { f: 'j',
+      A: ['{c} avale le budget : « candidat du sortant » ?', 'Les marchés applaudissent, la gauche grince, Bercy envoie des fleurs.'],
+      B: ['{c} vote le budget… avec des guirlandes', 'Amendements pour les petites retraites : le compromis qui ne fâche presque personne.'],
+      C: ['{c} claque la porte : « Je ne suis pas le candidat du sortant »', 'Visibilité maximale, élus de la majorité en grève de politesse.'] },
+    retraites: { f: 'c',
+      A: ['{c} à 65 ans : « une responsabilité »', 'Les actifs découvrent leur future retraite en direct, sans option siège.'],
+      B: ['{c} garde 64 ans et pense « seniors »', 'Peu risqué, peu mobilisateur : la politique du tiède chaud.'],
+      C: ['{c} convoque une conférence… après l\'élection', 'Le report, ce sport national : zéro fâché, zéro convaincu.'] },
+    maires: { f: 't',
+      A: ['{c} garantit les dotations : « un pacte de confiance » avec les mairies.', 'Les parrainages arrivent par camions. Le Trésor, lui, prie.'],
+      B: ['{c} promet « une nouvelle étape de décentralisation ». La sixième depuis 1982.', 'Les maires adorent. Les préfets prennent des notes.'],
+      C: ['{c} : « Les parrainages ne s\'achètent pas. » Les maires : « Ah. »', 'Intégrité en vitrine, signatures au compte-gouttes.'] },
+    union_centre: { f: 'c',
+      A: ['Centre : {c} refuse l\'union, « chacun sa chance »', 'Trois candidats, une même pièce : le centre, version puzzle.'],
+      B: ['{c} propose un « bloc central »… sous sa bannière', 'Les autres saluent l\'initiative et regardent le plafond.'],
+      C: ['Pacte de non-agression au centre : {c} signe', 'Pas d\'attaques entre amis. Les amis, eux, comptent leurs voix.'] },
+
+    // ---- chapitre 2-3 : séquences propres à chaque candidat ----
+    eurogroupe: { f: 'c',
+      A: ['{c} défie Bruxelles : « Le déficit se vote à Paris »', 'Applaudissements dans les cafés, froncements de sourcils à Francfort.'],
+      B: ['{c} négocie sept ans de délai contre un plan de réformes chiffré', 'L\'Europe aime les tableaux Excel.'],
+      C: ['La lettre de Bruxelles fuite : « six milliards de plus »', '{c} joue la victime. L\'Europe joue la surprise.'] },
+    cac40: { f: 'j',
+      A: ['{c} décline le dîner du CAC 40', 'Pas de patron à sa table avant l\'élection : la soupe populaire attendra.'],
+      B: ['{c} dîne avec les patrons, plan chiffré en poche', 'Baisse de charges contre embauches : l\'addition arrive avec le dessert.'],
+      C: ['Dîner secret pour {c} : « pas un mot de plus qu\'en public »', 'Pas de photographe, mais des serveurs bavards.'] },
+    elysee: { f: 't',
+      A: ['{c} : « Je ne suis l\'héritier de personne. » L\'Élysée a dû noter.', 'Indépendance affichée, ministres vexés.'],
+      B: ['Des ministres soutiennent {c} en douce, le Président reste invisible.', 'L\'appui discret : on en parle partout, donc plus si discret.'],
+      C: ['{c} réclame « un geste concret » avant de dire oui à l\'Élysée.', 'On négocie même les compliments.'] },
+    reformes: { f: 'c',
+      A: ['{c} : « Tout dans les cent premiers jours »', 'Retraites, chômage, statut des agents : le marathon en sprint.'],
+      B: ['{c} : cinq ans, une clause de revoyure annuelle', 'Le calendrier rassure ; les syndicats lisent les petits caractères.'],
+      C: ['{c} expérimente dans trois régions volontaires', '« On évalue, puis on décide » : la France des laboratoires.'] },
+    haute_fonction: { f: 'j',
+      A: ['{c} supprime les grands corps : concours unique pour tous', 'L\'ENA vous salue bien. Les couloirs de Bercy bouillonnent.'],
+      B: ['{c} garde les corps, impose mobilité et transparence du pantouflage', 'Les hauts fonctionnaires respirent. Les journalistes aussi.'],
+      C: ['{c} aux directeurs d\'administration : « Aucun poste supprimé »', 'Promesse qui tient jusqu\'au premier budget.'] },
+    spread: { f: 'c',
+      A: ['{c} promet un choc d\'économies immédiat', 'Les marchés applaudissent. Les ministères préparent leurs cartons.'],
+      B: ['{c} publie un calendrier chiffré par un institut indépendant', 'Le spread respire, l\'opposition cherche l\'erreur de virgule.'],
+      C: ['{c} dénonce « la spéculation » et les agences', 'Une posture, pas un programme : les marchés notent l\'effort de style.'] },
+    isf: { f: 'j',
+      A: ['{c} rétablit l\'ISF et taxe à 90 % au-delà de dix millions', 'Les riches paieront la transition. Les riches songent à la Belgique.'],
+      B: ['ISF rénové : {c} fait du sur-mesure fiscal', 'Barème progressif, exit tax renforcée, registre européen des fortunes.'],
+      C: ['{c} propose un impôt plancher de 25 % sur les milliardaires', 'Des économistes applaudissent ; les milliardaires ont déjà un comptable.'] },
+    salaires: { f: 'c',
+      A: ['{c} : SMIC à 2 000 € net, écart de un à vingt', 'Les syndicats chantent, le patronat vérifie le prix des billets pour Genève.'],
+      B: ['{c} : conférence sociale annuelle et écart plafonné', 'Un SMIC indexé et du dialogue : la gauche en mode tisane.'],
+      C: ['{c} : prime de partage de la valeur obligatoire', 'Ça ressemble à une augmentation, ça se paie comme une prime.'] },
+    capitaux: { f: 'j',
+      A: ['{c} : contrôle des capitaux et banques nationalisées en cas de panique', 'Le plan qui fait trembler les marchés (et les carnets de chèques).'],
+      B: ['{c} propose un fonds de stabilisation européen', 'Accord avec la BCE : le bruit des tableaux Excel en fond sonore.'],
+      C: ['« Pas un euro ne sera bloqué », jure {c} — plan B discret en tiroir', 'Rassurant. À condition de ne jamais ouvrir le tiroir.'] },
+    ecologie: { f: 't',
+      A: ['{c} soutient le blocage du chantier : « la désobéissance est parfois un devoir ».', 'Préfet furieux, jeunes ravis.'],
+      B: ['{c} soutient la marche, condamne le blocage, saisit le juge.', 'Le juge administratif reçoit son plus beau courrier.'],
+      C: ['{c} vient, ne dit rien, et laisse parler les jeunes.', 'Silence éloquent : certains saluent, d\'autres cherchent le programme.'] },
+    greve_generale: { f: 'c',
+      A: ['{c} rejoint le piquet : appel à la grève générale', 'Le meeting aura lieu sur la place de la gare, en direct des quais.'],
+      B: ['{c} appelle au dialogue : « le meeting ne doit pas être l\'otage »', 'Le préavis est un droit, le Zénith aussi.'],
+      C: ['Meeting délocalisé : trois salles reliées, billets échangeables', '{c} invente le meeting en réseau. Les billets suivent.'] },
+    services: { f: 'j',
+      A: ['{c} : cent mille embauches à l\'hôpital et à l\'école', 'Financées par la fiscalité du capital. Le capital réfléchit.'],
+      B: ['{c} : quarante mille postes, avec son chiffrage', 'Une loi de programmation : la rigueur sait aussi embaucher.'],
+      C: ['{c} promet « un hôpital rouvert par département »', 'Annonce de plateau : les départements comptent les lits.'] },
+    police: { f: 'c',
+      A: ['{c} promet la présomption de légitime défense pour tous les policiers', 'Les syndicats applaudissent, les juristes composent un numéro.'],
+      B: ['{c} : dix mille policiers de plus, financés', 'Équipements, formation, chiffrage : tout est sur la table.'],
+      C: ['{c} pose avec le syndicat devant le commissariat', 'Photo, sourires, et un débat qui continue sans lui.'] },
+    polemiste: { f: 't',
+      A: ['{c} répond au polémiste sur son ton ! Cinq minutes de ligne dure.', 'Il l\'a cherché. Les audiences aussi.'],
+      B: ['{c} refuse les petites phrases : trois mesures chiffrées. Point.', '« Fatiguant mais efficace », dit un plateau épuisé.'],
+      C: ['{c} laisse parler, cite UN chiffre : le polémiste se tait.', 'Rares sont les silences qui font un buzz.'] },
+    plafond_verre: { f: 'j',
+      A: ['{c} garde ses mots : « Les électeurs me prennent comme je suis »', 'Authentique ? Brutal ? Les deux, répondent les éditorialistes.'],
+      B: ['{c} change de vocabulaire et s\'entoure d\'élus de droite classique', 'Un économiste connu à la table : le plafond de verre se fissure.'],
+      C: ['{c} : mesuré à la télé, ferme dans les meetings', 'Le double discours : une recette qui sent la roulette.'] },
+    enclaves: { f: 'c',
+      A: ['{c} : « Aucune maternité, classe ou gare fermée sans l\'accord du maire »', 'Les maires rêvent d\'un droit de veto, l\'État de réunions.'],
+      B: ['{c} : pacte pour la ruralité, médecins en zones sous-denses', 'Trois ans d\'exercice obligatoires : les internes sortent le calendrier.'],
+      C: ['{c} tient son meeting au village : 45 minutes de route, salle des fêtes pleine', 'La ruralité, ça se mérite.'] },
+    metropoles: { f: 't',
+      A: ['{c} : fin des ZFE et baisse de la taxe carburant. « La voiture n\'est pas un luxe. »', 'Les automobilistes applaudissent, les poumons moins.'],
+      B: ['{c} : prime de déplacement, ZFE assouplies, transports cofinancés.', 'Le compromis qui ne roule dans aucun sens.'],
+      C: ['{c} promet à chaque métropole un référendum local.', 'À elles de choisir. Et d\'en payer les bulletins.'] },
+    fait_divers: { f: 'c',
+      A: ['{c} dénonce « le laxisme de la justice » après le fait divers', 'Réponse pénale immédiate réclamée ; le garde des Sceaux avale son café.'],
+      B: ['{c} : compassion, présomption d\'innocence, attente de l\'enquête', 'La sobriété d\'un candidat dans un cycle d\'émotion.'],
+      C: ['{c} demande un point presse : « Que sait-on ? Que fait-on ? »', 'Une phrase prudente qui dit : « je ne sais rien, mais je vous en parle ».'] },
+
+    // ---- chapitre 3 : les territoires ----
+    baron: { f: 'c',
+      A: ['{c} : « Pas de notables, je n\'ai besoin d\'aucun baron »', 'Le baron local jure qu\'il ne s\'est jamais senti aussi léger.'],
+      B: ['{c} scelle un marché avec le baron local : maires contre amendement', 'Les parrainages arrivent. Les questions aussi.'],
+      C: ['Photo {c} et le baron, sans engagement', 'Un sourire, un cadre, un contrat vide.'] },
+    paysan: { f: 't',
+      A: ['{c} : protection des prix, porte fermée au dumping.', 'Les éleveurs hochent la tête ; les importateurs ouvrent un dossier.'],
+      B: ['{c} : plan de transition sur dix ans avec Bruxelles.', 'Dix ans pour transitionner : le temps qu\'une vache change d\'avis.'],
+      C: ['{c} fait un selfie avec la vache.', 'Marianne n\'a pas commenté. Les réseaux, si.'] },
+    attaque: { f: 'c',
+      A: ['{c} : le projet du favori est « un danger pour le pays »', 'Le favori répond par un communiqué d\'une page. La contre-attaque, par dix.'],
+      B: ['{c} démonte le chiffrage du favori : trente milliards de plus', 'Un tableur qui fait mal dans un pays sensible aux millions.'],
+      C: ['{c} ignore les attaques : « Je parle de mon projet »', 'Posture olympienne. Sondages de bronze.'] },
+    parrainages: { f: 'j',
+      A: ['{c} écrit aux maires de petites communes', 'Courriers, visites, bottes de foin : la grande tournée des signatures.'],
+      B: ['{c} relance ciblée dans les départements manquants', 'Chaque département compte, surtout ceux qui ne répondent pas.'],
+      C: ['« Libérez les parrainages ! » : {c} lance une pétition citoyenne', 'Les signatures numériques ne valent pas celles des maires, mais elles font du bruit.'] },
+    matinale: { f: 'c',
+      A: ['{c} financera son programme par un impôt sur les très hauts patrimoines', 'Le plateau frémit. Les patrimoines aussi.'],
+      B: ['{c} : vingt milliards d\'économies sur l\'administration et les agences', 'Les agences d\'État découvrent qu\'on peut les compter.'],
+      C: ['{c} : le chiffrage complet sera publié avant le premier tour', 'Un calendrier, un tableur, une promesse.'] },
+    donateur: { f: 't',
+      A: ['{c} refuse net le généreux donateur : « propre ou pas du tout ».', 'Un chèque en moins, une image en plus.'],
+      B: ['{c} accepte : 330 salariés, chacun au plafond de 4 600 €. Tout est légal.', 'Légal, oui. Élégant, on en discute.'],
+      C: ['{c} reçoit le donateur « pour comprendre ».', 'Comprendre : le verbe préféré des candidats qui hésitent.'] },
+
+    // ---- chapitre 4 : les 500 signatures ----
+    plafond: { f: 'c',
+      A: ['Parrainages : 548 présentations comptées', 'Toutes les présentations comptent : le Conseil constitutionnel n\'oublie personne.'],
+      B: ['Parrainages : 519, plafonds par département', 'Trente-quatre départements concernés ; Nord, Pas-de-Calais et Aisne plafonnés.'],
+      C: ['Parrainages : 500 pile pour {c}', 'Le Conseil s\'arrête dès que le seuil est atteint : l\'art du minimum syndical.'] },
+    fronde: { f: 'j',
+      A: ['{c} dénonce « l\'État profond »', 'Une administration qui voudrait décider à la place du peuple : la tribune est en bas de page.'],
+      B: ['{c} reçoit les signataires, soumet son chiffrage à un institut', 'Plus fort que la polémique : un tableur indépendant.'],
+      C: ['Tribune retirée : {c} négocie en coulisses', 'Garanties sur les futurs postes contre silence : le marché du couloir.'] },
+    meeting: { f: 'j',
+      A: ['{c} au Zénith : « Ils n\'ont pas fini de nous entendre »', 'Un discours de colère. La salle y croit, les murs aussi.'],
+      B: ['{c} au Zénith : tendre la main aux battus de demain', 'Un discours de rassemblement. Les battus applaudissent par avance.'],
+      C: ['{c} au Zénith : mon histoire, mes doutes, ma promesse', 'Un discours personnel. Les mouchoirs sont de sortie.'] },
+
+    // ---- chapitre 5 : les débats ----
+    d_budget: { f: 'c',
+      A: ['{c} : « Le déficit passe après l\'urgence sociale »', 'À Bruxelles, on notera l\'enthousiasme.'],
+      B: ['{c} : retour sous 3 % en cinq ans, effort équitablement réparti', 'Un plan calibré, le sourire d\'un expert-comptable.'],
+      C: ['{c} : d\'abord un audit, puis on décidera', 'Le débat avance d\'un tiers de pas.'] },
+    d_secu: { f: 't',
+      A: ['{c} : autorité d\'abord, peines effectives, expulsion des étrangers condamnés.', 'Les débats ont ça de bien : les chiffres peuvent attendre.'],
+      B: ['{c} : police de proximité et moyens pour la justice.', 'Le suivi avant la sanction : pas un slogan, une méthode.'],
+      C: ['{c} : grand débat national, puis référendum.', 'On demande aux Français. Ils répondront… un jour.'] },
+    d_europe: { f: 'c',
+      A: ['{c} : priorité au droit national, secteurs stratégiques nationalisés', 'Les juristes européens réclament un café fort.'],
+      B: ['{c} : grand plan d\'investissement européen, financé en commun', 'L\'Europe, version chantier : tout le monde met un casque.'],
+      C: ['{c} : contrats par filière signés avec l\'État', 'Une politique industrielle à la carte.'] },
+    d_pouvoir: { f: 'j',
+      A: ['{c} : blocage des prix et hausse des salaires', 'Le panier de courses prend un ton de campagne.'],
+      B: ['{c} : TVA ciblée sur l\'énergie et l\'alimentation', 'Une baisse pensée au centime : les caissières approuvent.'],
+      C: ['{c} : un chèque exceptionnel pour tous avant l\'été', 'Il est pour tous, et pour l\'été : joli slogan, coût vertigineux.'] },
+    duel_retraites: { f: 'c',
+      A: ['Duel : {c} promet le retour à 62 ans', 'Financé par le capital et les hauts revenus. Le débat s\'échauffe.'],
+      B: ['Duel : {c} garde 64 ans mais indexe les petites pensions', 'Carrières longues et petites pensions : la voie du milieu.'],
+      C: ['Duel : {c} s\'en remet à une conférence citoyenne', '« Je m\'y soumettrai » : la démocratie en cours du soir.'] },
+    duel_institutions: { f: 't',
+      A: ['Duel : {c} supprimera le 49.3 et convoquera une Constituante.', 'La VIe République, c\'est pour dimanche prochain.'],
+      B: ['Duel : {c} gardera le 49.3 pour les seuls budgets.', 'Avec compte rendu au Parlement. Les constitutionnalistes plissent les yeux.'],
+      C: ['Duel : {c} négociera chaque budget avec les groupes.', 'La majorité se construit… à la table des négociations.'],
+      D: ['Duel : {c} sort ses amendements, article par article.', 'Le détail : arme fatale des candidats qui préparent.'] },
+    duel_ecologie: { f: 'j',
+      A: ['Duel : {c} relance le nucléaire et contrôle les prix de l\'énergie', 'Un atome de bon sens, disent ses partisans. Un atome de trop, répondent les autres.'],
+      B: ['Duel : {c} promet une planification écologique', 'Rénovation des logements, transports : la transition à l\'œuvre.'],
+      C: ['Duel : {c} propose une pause réglementaire', 'On laisse respirer entreprises et agriculteurs : la pause café du programme.'] },
+    duel_barrage: { f: 'c',
+      A: ['Second tour : {c} ne veut d\'aucune consigne', 'Son camp suffira. Le camp d\'en face aussi.'],
+      B: ['Second tour : {c} tend la main aux battus, sans marchandage', 'Les battus examinent la main, puis les promesses.'],
+      C: ['Second tour : {c} répond « ni l\'un ni l\'autre »', 'Le ni-ni, spécialité du second tour.'] },
+  });
 })(globalThis.AK);
 
 
@@ -8305,6 +8572,112 @@ AK.config({
     } catch (e) { console.error('vie:', e); }
     return r;
   };
+})(globalThis.AK);
+
+
+/* ===== game/zz-zinfos.js ===== */
+// ============================================================================
+//  V19 — FLASH D'INFOS : mise en scène (le moteur n'est pas modifié ; on étend AK.UI et on ajoute un handler).
+//  Après chaque choix de campagne : un écran de presse (chaîne d'info / une de journal / fil social) + jauge de sondage animée.
+//  { call:'infos', args:{ id, l, h, avant, apres } } — sans effet en mode « headless » (tests) : ni UI ni durée.
+// ============================================================================
+(function (AK) {
+  const UI = AK.UI ? AK.UI.prototype : null;   // absent en mode headless : seul le handler (no-op) est alors enregistré
+  const MEDIAS = { c: ['INFO 24', 'EN CONTINU'], j: ['LE CRIEUR', 'DE PARIS'], t: ['Fil d\'actu', '@actu_france'] };
+
+  // ---- données : titre + sous-titre d'un choix (repli générique si absent) ----
+  AK.flashOf = function (id, l, nom, fiche) {
+    const e = ((AK.FLASH || {})[id] || {}), v = e[l];
+    const sub = (s) => String(s || '').replace(/\{c\}/g, nom);
+    if (v) return { f: e.f || 'c', titre: sub(v[0]), sous: sub(v[1]) };
+    return { f: 'c', titre: nom + ' : décision prise', sous: String(fiche || '') };
+  };
+
+  if (UI) {
+  UI.infos = function (o) {
+    return new Promise((res) => { this.news = Object.assign({ t: 0, res, dur: 5.2 }, o); });
+  };
+
+  const upd = UI.update;
+  UI.update = function (dt) { upd.call(this, dt); const n = this.news; if (n) { n.t += dt; if (n.t >= n.dur) { this.news = null; n.res(); } } };
+  const pd = UI.pointerDown;
+  UI.pointerDown = function (x, y, b) { const n = this.news; if (n) { if (n.t > 0.7) n.t = n.dur; return; } return pd.call(this, x, y, b); };
+  const ky = UI.key;
+  UI.key = function (k) { const n = this.news; if (n) { if ((k === ' ' || k === 'Enter' || k === 'Escape') && n.t > 0.7) n.t = n.dur; return; } return ky.call(this, k); };
+
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const ease = (k) => 1 - Math.pow(1 - clamp(k, 0, 1), 3);
+
+  function lignes(ui, ctx, text, maxW, font) { ctx.font = font; return ui.wrap(text, maxW, font); }
+
+  // jauge de sondage : barre « avant » → « après » animée
+  function sondage(ui, ctx, x, y, w, n, k) {
+    const a = n.avant, b = n.apres, v = a + (b - a) * ease(k), max = Math.max(30, Math.ceil(Math.max(a, b) / 5) * 5 + 5);
+    ctx.font = ui.F(8, true); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#cfd8e8'; ctx.fillText('INTENTIONS DE VOTE — ' + n.nom, x, y);
+    ui.rrect(ctx, x, y + 8, w, 9, 3); ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fill();
+    const up = b >= a; ui.rrect(ctx, x, y + 8, Math.max(4, w * v / max), 9, 3); ctx.fillStyle = up ? '#4fbf6a' : '#d9543f'; ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillRect(x + w * a / max - 0.5, y + 6, 1, 13);
+    ctx.textAlign = 'right'; ctx.font = ui.F(11, true); ctx.fillStyle = up ? '#8fe6a2' : '#ff9a88';
+    ctx.fillText(v.toFixed(1) + ' %  ' + (b - a >= 0 ? '+' : '') + (b - a).toFixed(1), x + w, y + 24);
+    ctx.textAlign = 'left';
+  }
+
+  function dessiner(ui, ctx, n) {
+    const L = ui.L, W = L.w, H = L.totalH, t = n.t;
+    const aIn = ease(t / 0.45), aOut = clamp((n.dur - t) / 0.4, 0, 1), A = Math.min(aIn, aOut);
+    ctx.save(); ctx.globalAlpha = A * 0.92; ctx.fillStyle = '#05070d'; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = A;
+    const pw = Math.min(W - 24, 330), px = (W - pw) / 2, slide = (1 - aIn) * 22;
+    const m = MEDIAS[n.f] || MEDIAS.c;
+    const tit = lignes(ui, ctx, n.titre, pw - 28, ui.F(n.f === 'j' ? 13 : 12, true));
+    const sou = lignes(ui, ctx, n.sous, pw - 28, ui.F(9.5, false));
+    const ph = (n.f === 'j' ? 70 : 52) + tit.length * 15 + sou.length * 12, py = Math.max(10, (H - ph) / 2) + slide;
+    ctx.translate(0, 0);
+    if (n.f === 'j') {                                   // une de journal
+      ctx.save(); ctx.translate(W / 2, py + ph / 2); ctx.rotate(-0.018 * (1 - aIn * 0.6)); ctx.translate(-W / 2, -(py + ph / 2));
+      ctx.fillStyle = '#e9dfc4'; ctx.fillRect(px, py, pw, ph); ctx.strokeStyle = '#5a4a30'; ctx.lineWidth = 1; ctx.strokeRect(px + 3.5, py + 3.5, pw - 7, ph - 7);
+      ctx.fillStyle = '#1b1710'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = 'bold 20px Georgia, serif'; ctx.fillText(m[0] + ' ' + m[1], W / 2, py + 22);
+      ctx.fillRect(px + 12, py + 38, pw - 24, 1.5); ctx.fillRect(px + 12, py + 41, pw - 24, 0.7);
+      ctx.textAlign = 'left'; ctx.font = 'bold 13px Georgia, serif'; tit.forEach((l, i) => ctx.fillText(l, px + 14, py + 58 + i * 15));
+      ctx.font = 'italic 9.5px Georgia, serif'; ctx.fillStyle = '#3a3226'; sou.forEach((l, i) => ctx.fillText(l, px + 14, py + 62 + tit.length * 15 + i * 12));
+      ctx.restore();
+    } else if (n.f === 't') {                            // fil social
+      ui.rrect(ctx, px, py, pw, ph, 8); ctx.fillStyle = '#10151f'; ctx.fill(); ctx.strokeStyle = '#2a3447'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = '#2b6fd6'; ctx.beginPath(); ctx.arc(px + 22, py + 22, 10, 0, 6.2832); ctx.fill();
+      ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillStyle = '#e8eef9'; ctx.font = ui.F(10, true); ctx.fillText(m[0], px + 38, py + 18);
+      ctx.fillStyle = '#7d8aa3'; ctx.font = ui.F(8.5, false); ctx.fillText(m[1] + '  ·  à l\'instant', px + 38, py + 30);
+      ctx.fillStyle = '#f2f5fb'; ctx.font = ui.F(11.5, true); tit.forEach((l, i) => ctx.fillText(l, px + 14, py + 54 + i * 15));
+      ctx.fillStyle = '#9aa7c0'; ctx.font = ui.F(9.5, false); sou.forEach((l, i) => ctx.fillText(l, px + 14, py + 58 + tit.length * 15 + i * 12));
+    } else {                                             // chaîne d'info en continu
+      ctx.fillStyle = '#0c1a3a'; ctx.fillRect(px, py, pw, ph); ctx.fillStyle = '#c8202a'; ctx.fillRect(px, py, pw, 22);
+      ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillStyle = '#fff'; ctx.font = ui.F(10.5, true); ctx.fillText(m[0] + '  ' + m[1], px + 10, py + 11);
+      const blink = (Math.floor(t * 2) % 2) === 0; ctx.textAlign = 'right'; ctx.fillText((blink ? '● ' : '○ ') + 'DIRECT', px + pw - 10, py + 11);
+      ctx.textAlign = 'left'; ctx.fillStyle = '#ffffff'; ctx.font = ui.F(12, true); tit.forEach((l, i) => ctx.fillText(l, px + 14, py + 40 + i * 15));
+      ctx.fillStyle = '#ffd35a'; ctx.fillRect(px, py + 28 + tit.length * 15 + 3, 3, sou.length * 12 + 6);
+      ctx.fillStyle = '#c9d6ee'; ctx.font = ui.F(9.5, false); sou.forEach((l, i) => ctx.fillText(l, px + 14, py + 44 + tit.length * 15 + i * 12));
+    }
+    // sondage (sous le panneau)
+    sondage(ui, ctx, px + 4, py + ph + 10, pw - 8, n, clamp((t - 0.9) / 1.6, 0, 1));
+    if (t > 0.7 && t < n.dur - 0.4) { ctx.font = ui.F(7.5, false); ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.textAlign = 'center'; ctx.fillText('clic / espace pour continuer', W / 2, H - 8); }
+    ctx.restore();
+  }
+
+  const dov = UI.drawOverlay;
+  UI.drawOverlay = function (ctx, S, hero) {
+    dov.call(this, ctx, S, hero);
+    if (!this.news) return;
+    ctx.save(); ctx.scale(S, S); try { dessiner(this, ctx, this.news); } finally { ctx.restore(); }
+  };
+
+  }
+
+  // ---- handler : ne fait rien hors navigateur (tests / headless) ----
+  AK.handler('infos', async (api, a) => {
+    const io = api.game && api.game.io;
+    if (!io || !io.ui || !io.ui.infos) return;
+    const f = AK.flashOf(a.id, a.l, a.nom, a.fiche);
+    try { io.sfx && io.sfx(a.apres - a.avant >= 0 ? 'bell' : 'buzz'); } catch (e) { /* silence */ }
+    await io.ui.infos({ f: f.f, titre: f.titre, sous: f.sous, avant: a.avant, apres: a.apres, nom: a.nom });
+  });
 })(globalThis.AK);
 
 
