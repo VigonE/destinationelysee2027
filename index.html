@@ -10619,6 +10619,63 @@ AK.parler('sg_elysee', {
 /* ===== game/scenes/hemicycle.js ===== */
 // CHAPITRE 2 (tous les candidats) — L'hémicycle du Palais Bourbon, mercredi 15 h : les questions au gouvernement (QAG).
 // Énigme : la fiche de question (imprimée au QG) déposée à la présidence de séance → séquence « qag ».
+// ---- géométrie et animation des 8 rangées de députés (vue de face sur l'amphithéâtre) ----
+const HEMI = (() => {
+  const H = { ROWS: 8, X0: 46, X1: 588, PITCH: 14, YD0: 181 };
+  H.rowY = (k, x) => { const u = (x - 317) / 271; return H.YD0 - k * H.PITCH - (4 + k * 0.7) * (1 - u * u); };
+  H.mix = (hex, f) => { const n = parseInt(hex.slice(1), 16); const m = (v) => Math.max(0, Math.min(255, Math.round(v * f))); return `rgb(${m(n >> 16)},${m((n >> 8) & 255)},${m(n & 255)})`; };
+  let sd = 20271029; const rnd = () => ((sd = (sd * 1664525 + 1013904223) >>> 0) / 4294967296);
+  const SUITS = ['#1c2336', '#2a2a32', '#16161c', '#3a3226', '#24303a', '#33223a', '#40404a', '#1e2a22'], SKIN = ['#ecc8a4', '#d9aa84', '#b88a68', '#8a5e42', '#f2d4b8'], HAIR = ['#2a1a10', '#6a4a2a', '#a8a8b0', '#d8c890', '#141414', '#8a3a1a', '#e8e8ea'];
+  H.AISLES = [128, 196, 444, 512];                         // allées d'escalier : lignes qui convergent vers le perchoir
+  H.aisleX = (a, k) => 320 + (a - 320) * (1 - k * 0.032);
+  H.deps = [];
+  for (let k = 0; k < H.ROWS; k++) {
+    const sc = 1 - k * 0.04, pitch = 12.4 * sc + 1; const row = [];
+    for (let x = H.X0 + 7; x < H.X1 - 4; x += pitch) {
+      const inDais = k <= 5 && x > 222 && x < 418;
+      if (inDais || H.AISLES.some((a) => Math.abs(x - H.aisleX(a, k)) < 6.5)) continue;   // masqué par le perchoir / allée d'escalier
+      row.push({ x: x + (rnd() - 0.5) * 2.2, sc, suit: SUITS[(rnd() * 8) | 0], skin: SKIN[(rnd() * 5) | 0], hair: HAIR[(rnd() * 7) | 0], f: rnd() < 0.34, tie: rnd() < 0.4 ? ['#c83a3a', '#2a5ac8', '#e8c040'][(rnd() * 3) | 0] : null,
+        ph: rnd() * 6.28, sp: 0.9 + rnd() * 0.9, ph2: rnd() * 6.28, ph3: rnd() * 6.28, phone: rnd() < 0.09, side: x < 320 ? 0 : 1, heck: rnd() < 0.035 });
+    }
+    H.deps.push(row);
+  }
+  const win = (t, a, b) => Math.max(0, Math.min(1, Math.min((t - a) / 0.5, (b - t) / 0.5)));
+  // applaudissements par vagues : la gauche, puis la droite, puis tout l'hémicycle
+  H.applause = (t, side) => { const q = t % 30; return Math.max(side === 0 ? win(q, 5, 9) : win(q, 13, 17), win(q, 24, 28) * 0.8); };
+  H.draw = (c, t) => {
+    c.save(); c.lineJoin = 'round';
+    for (let k = H.ROWS - 1; k >= 0; k--) {
+      const shade = 1 - k * 0.035;
+      for (const d of H.deps[k]) {
+        const sc = d.sc, yd = H.rowY(k, d.x);
+        const cl = H.applause(t, d.side) * (0.4 + 0.6 * ((Math.sin(d.ph * 3) + 1) / 2) > 0.25 ? 1 : 0);
+        const hk = d.heck ? Math.max(0, Math.min(1, ((t + d.ph * 3) % 23 - 1) / 0.4)) * (((t + d.ph * 3) % 23) < 3.2 ? 1 : 0) : 0;      // un frondeur se lève, bouche ouverte
+        const lift = cl * (1.9 + 0.8 * Math.sin(t * 9 + d.ph)) * sc + hk * 4.5 * sc;
+        const bob = Math.sin(t * d.sp + d.ph) * 0.38 * sc;
+        const look = Math.sin(t * 0.33 + d.ph2) * 1.0 + (Math.sin(t * 0.11 + d.ph3) > 0.93 ? 1.6 : 0);
+        const bw = 5.2 * sc, th = 6.8 * sc + lift;
+        c.fillStyle = HEMI.mix(d.suit, shade); c.strokeStyle = 'rgba(8,4,4,.55)'; c.lineWidth = 0.5;
+        c.beginPath(); c.moveTo(d.x - bw, yd); c.lineTo(d.x - bw + 0.5, yd - th + 1.2 * sc); c.quadraticCurveTo(d.x, yd - th - 2.4 * sc + bob * 0.5, d.x + bw - 0.5, yd - th + 1.2 * sc); c.lineTo(d.x + bw, yd); c.closePath(); c.fill(); c.stroke();
+        c.fillStyle = HEMI.mix('#f4f0e8', shade); c.beginPath(); c.moveTo(d.x - 1.3 * sc, yd - th + 0.6 * sc + bob * 0.5); c.lineTo(d.x + 1.3 * sc, yd - th + 0.6 * sc + bob * 0.5); c.lineTo(d.x, yd - th + 3.6 * sc); c.closePath(); c.fill();
+        if (d.tie) { c.fillStyle = HEMI.mix(d.tie, shade); c.fillRect(d.x - 0.4, yd - th + 2.2 * sc, 0.8, 2.6 * sc); }
+        const hy = yd - th - 2.9 * sc + bob + (d.heck ? -hk * 0.8 : 0), hx = d.x + look * 0.6;
+        if (d.f) { c.fillStyle = HEMI.mix(d.hair, shade); c.beginPath(); c.ellipse(hx, hy + 1.4 * sc, 3.9 * sc, 4.4 * sc, 0, 0, 6.2832); c.fill(); }
+        c.fillStyle = HEMI.mix(d.skin, shade); c.beginPath(); c.ellipse(hx, hy, 3 * sc, 3.5 * sc, 0, 0, 6.2832); c.fill(); c.stroke();
+        c.fillStyle = HEMI.mix(d.hair, shade); c.beginPath(); c.ellipse(hx, hy - 1.5 * sc, 3.1 * sc, d.f ? 2 * sc : 1.6 * sc, 0, Math.PI, 6.2832); c.fill();
+        if (hk > 0.3) { c.fillStyle = '#3a0c0c'; c.beginPath(); c.ellipse(hx + look * 0.2, hy + 1.4 * sc, 0.9 * sc, 0.7 * sc + Math.sin(t * 12) * 0.2, 0, 0, 6.2832); c.fill(); }
+        if (cl > 0.05) {                                              // mains qui claquent devant la poitrine
+          const sp = (1 + Math.sin(t * 14 + d.ph)) * 1.1 * sc; c.fillStyle = HEMI.mix(d.skin, shade);
+          c.beginPath(); c.arc(d.x - 0.5 - sp, yd - th * 0.75, 1.15 * sc, 0, 6.2832); c.arc(d.x + 0.5 + sp, yd - th * 0.75, 1.15 * sc, 0, 6.2832); c.fill();
+        }
+        if (d.phone && cl < 0.05) { c.fillStyle = Math.sin(t * 1.3 + d.ph) > 0.2 ? 'rgba(150,200,255,.9)' : 'rgba(40,50,70,.9)'; c.fillRect(d.x + 1.4 * sc, yd - 2.4 * sc, 2 * sc, 1.4 * sc); }
+      }
+    }
+    // voile chaud pour unifier avec le décor peint (les députés sont dessinés après l'éclairage)
+    const g = c.createLinearGradient(0, 66, 0, 190); g.addColorStop(0, 'rgba(40,18,8,.22)'); g.addColorStop(1, 'rgba(40,18,8,.06)'); c.fillStyle = g; c.fillRect(HEMI.X0 - 4, 66, HEMI.X1 - HEMI.X0 + 8, 124);
+    c.restore();
+  };
+  return H;
+})();
 AK.piece({
   id: 'hemicycle', name: 'Hémicycle — questions au gouvernement', music: 'baroque', sortie: false,
   walk: { areas: [[[24, 204], [586, 204], [634, 258], [6, 258]]], holes: [] },
@@ -10627,50 +10684,60 @@ AK.piece({
   fx: [{ type: 'dust', n: 40, alpha: 0.45 }, { type: 'shafts', color: '#fff0c8', alpha: 0.13, beams: [{ top: [200, 440, 0], bottom: [90, 560, 200], alpha: 0.15 }] }],
   paint(P, s) {
     const c = P.ctx; const r = P.rng('hemi');
-    // mur du fond : pierre dorée de l'Assemblée, frise haute, grandes colonnes cannelées
-    P.stone(0, 0, 640, 200, { tone: '#d2bf92', course: 14, block: 36, top: 0.12, bottom: -0.2 });
+    // ---- vue de face sur l'amphithéâtre : mur de pierre dorée, verrière, galerie du public ----
+    P.stone(0, 0, 640, 196, { tone: '#d2bf92', course: 14, block: 36, top: 0.12, bottom: -0.2 });
     P.cornicheHD(0, 12, { h: 14, tone: '#f2e8c8', gold: true });
-    // verrière : plafond de verre peint (vitraux ambre / ciel), nervures dorées, lumière zénithale
     P.clipRect(140, 0, 360, 15, () => {
       for (let x = 140, i = 0; x < 500; x += 24, i++) P.rect(x, 0, 24, 15, i % 2 ? ['#f4e8b8', '#e0b868'] : ['#cfe2f0', '#8fb4d4']);
       P.rect(140, 0, 360, 15, ['rgba(255,255,255,.35)', 'rgba(0,0,0,.18)']);
       for (let x = 140; x <= 500; x += 24) P.line(x, 0, x, 15, '#c89a36', 1.3);
     });
-    P.rect(140, 14, 360, 2.5, '#a8842c', { stroke: '#3a2a08', lw: 0.6, wob: 0 }); P.glow(320, 8, 230, '#fff2c4', 0.34);
-    P.rayons(250, 14, 130, 214, { n: 5, a: 0.09, spread: 80 }); P.rayons(390, 14, 520, 214, { n: 5, a: 0.09, spread: 80 });
-    // tribune du public / galerie haute : balustrade, têtes variées, tentures
-    P.rect(40, 34, 560, 36, ['#6c1626', '#3a0812'], { stroke: '#2a0610', lw: 0.8, wob: 0 }); P.dorure(40, 30, 560, 5);
+    P.rect(140, 14, 360, 2.5, '#a8842c', { stroke: '#3a2a08', lw: 0.6, wob: 0 }); P.glow(320, 8, 240, '#fff2c4', 0.34);
+    P.rayons(250, 14, 130, 214, { n: 5, a: 0.08, spread: 80 }); P.rayons(390, 14, 520, 214, { n: 5, a: 0.08, spread: 80 });
+    // galerie du public : balcon de velours, têtes, balustres dorés
     const hairs = ['#2a1a10', '#6a4a2a', '#a8a8b0', '#d8c890', '#1a1a1a', '#8a3a1a'];
-    for (let i = 0; i < 17; i++) { const x = 50 + i * 33; P.ellipse(x, 53, 4.2, 4.8, ['#ecc8a4', '#b88a68'], { stroke: '#2a1a10', lw: 0.6 }); P.ellipse(x, 50.4, 4.4, 2.8, hairs[(i * 5) % 6]); P.poly([[x - 6.5, 70], [x - 5, 59], [x + 5, 59], [x + 6.5, 70]], i % 3 ? '#26263a' : '#5a3a4a', { stroke: '#10101a', lw: 0.5, wob: 0 }); }
-    P.rect(40, 66, 560, 5, ['#e8d49a', '#a8842c'], { stroke: '#3a2a08', lw: 0.7, wob: 0 }); for (let x = 46; x < 600; x += 10) P.rect(x, 71, 3, 8, ['#e8d49a', '#a8842c'], { stroke: '#3a2a08', lw: 0.4, wob: 0 });
-    P.rect(40, 79, 560, 3, '#8a6a22', { wob: 0 });
-    for (const x of [58, 548]) P.tentureHD(x, 84, 34, 84, '#7a1426', { frange: '#d8b048' });
-    // colonnes cannelées
-    for (const x of [10, 112, 508, 610]) P.colonne(x, 22, 20, 178, { tone: '#f0e6c8', gold: true });
-    // sol : parquet verni, tapis, reflets
-    P.floor(200, 264, { type: 'boards', a: '#7a4c28', b: '#5e3a1c', top: [0, 640], bottom: [-120, 760], rows: 8 });
-    P.rug(320, 246, 280, 12, { color: '#7a1830' });
-    // gradins : rangées de bancs de cuir rouge, pupitres, députés en costume (perspective par rangs)
-    const rang = (x0, dir) => { for (let k = 0; k < 6; k++) { const y = 150 - k * 12 + 2, w = 150 - k * 6; const xa = dir < 0 ? x0 - w : x0;
-      P.rect(xa, y + 8, w, 6, ['#6a4224', '#2a1608'], { stroke: '#1a0c04', lw: 0.6, wob: 0 });
-      P.rect(xa, y, w, 10, ['#a02430', '#4a0a12'], { stroke: '#1a0408', lw: 0.8, wob: 0 }); for (let q = xa + 6; q < xa + w; q += 12) P.circle(q, y + 5, 0.9, 'rgba(255,214,160,.35)'); P.rect(xa, y + 9, w, 3, '#3a2a1c');
-      for (let q = 0; q < w / 15; q++) { const hx = xa + 8 + q * 15; P.ellipse(hx, y - 2.5, 3.8, 4.4, ['#ecc8a4', '#b88a68'], { stroke: '#2a1a10', lw: 0.5 }); P.ellipse(hx, y - 4.6, 4, 2.6, hairs[(q * 3 + k) % 6]); P.poly([[hx - 6.5, y + 5], [hx - 5.5, y], [hx + 5.5, y], [hx + 6.5, y + 5]], (q + k) % 4 ? '#22222e' : '#34446a', { stroke: '#0a0a14', lw: 0.5, wob: 0 }); } }
-      P.rect(dir < 0 ? x0 - 156 : x0 - 4, 98, 160, 4, ['#8a6a22', '#4a3408'], { wob: 0 }); };
-    rang(110, -1); rang(530, 1);
+    P.rect(40, 32, 548, 24, ['#6c1626', '#3a0812'], { stroke: '#2a0610', lw: 0.8, wob: 0 }); P.dorure(40, 28, 548, 5);
+    for (let i = 0; i < 17; i++) { const x = 52 + i * 32; P.ellipse(x, 44, 3.8, 4.4, ['#ecc8a4', '#b88a68'], { stroke: '#2a1a10', lw: 0.5 }); P.ellipse(x, 41.6, 4, 2.6, hairs[(i * 5) % 6]); P.poly([[x - 6, 56], [x - 5, 49], [x + 5, 49], [x + 6, 56]], ['#243048', '#4a2a3a', '#2a2a30', '#3a4a3a'][i % 4], { stroke: '#10101a', lw: 0.4, wob: 0 }); }
+    P.rect(40, 54, 548, 4, ['#e8d49a', '#a8842c'], { stroke: '#3a2a08', lw: 0.7, wob: 0 }); for (let x = 46; x < 588; x += 9) P.rect(x, 58, 3, 6, ['#e8d49a', '#a8842c'], { stroke: '#3a2a08', lw: 0.4, wob: 0 });
+    P.rect(40, 63, 548, 3, '#8a6a22', { wob: 0 });
+    // ---- gradins : 8 rangées en arc (dossiers de cuir rouge + pupitres en bois doré) — les députés sont animés dans props ----
+    for (let k = HEMI.ROWS - 1; k >= 0; k--) {
+      const top = [], bot = [], d1 = [], d2 = [];
+      for (let x = HEMI.X0; x <= HEMI.X1 + 0.1; x += 6) { const y = HEMI.rowY(k, x); top.push([x, y - 11]); bot.push([x, y]); d1.push([x, y]); d2.push([x, y + 3]); }
+      const sh = 1 - k * 0.035;
+      P.poly(top.concat(bot.slice().reverse()), HEMI.mix('#a02430', sh), { stroke: '#1a0408', lw: 0.5, wob: 0 });
+      P.poly(top.concat(top.map(([x, y]) => [x, y + 3]).reverse()), 'rgba(0,0,0,.22)', { wob: 0 });                     // ombre sous le rang du dessus
+      P.poly(d1.concat(d2.slice().reverse()), HEMI.mix('#d4aa58', sh), { stroke: '#3a2808', lw: 0.5, wob: 0 });            // plateau du pupitre
+      for (let x = HEMI.X0 + 6 + (k % 2) * 6; x < HEMI.X1; x += 12) P.circle(x, HEMI.rowY(k, x) + 1.4, 0.7, 'rgba(255,236,170,.75)');   // voyants de vote
+      if (k === 0) { const f1 = []; for (let x = HEMI.X0; x <= HEMI.X1 + 0.1; x += 6) f1.push([x, HEMI.rowY(0, x) + 3]); P.poly(f1.concat(f1.map(([x, y]) => [x, y + 8]).reverse()), ['#6a4224', '#2a1608'][0], { stroke: '#1a0c04', lw: 0.6, wob: 0 }); }
+    }
+    for (const a of HEMI.AISLES) {                                      // allées : marches de bois sombre, liserés dorés
+      const L = [], R = [];
+      for (let k = HEMI.ROWS - 1; k >= 0; k--) { const x = HEMI.aisleX(a, k), y = HEMI.rowY(k, x); L.push([x - 5.5, y - 11]); R.push([x + 5.5, y - 11]); L.push([x - 5.5 - 0.3, y + 3]); R.push([x + 5.5 + 0.3, y + 3]); }
+      P.poly(L.concat(R.reverse()), '#3a2012', { stroke: '#1a0c04', lw: 0.5, wob: 0 });
+      for (let k = HEMI.ROWS - 1; k >= 0; k--) { const x = HEMI.aisleX(a, k), y = HEMI.rowY(k, x); P.rect(x - 5.5, y, 11, 1.8, '#c8a050', { wob: 0 }); P.rect(x - 5.5, y - 11, 11, 0.8, 'rgba(0,0,0,.4)', { wob: 0 }); }
+    }
+    // rampes dorées, de part et d'autre
+    for (const x of [HEMI.X0 - 2, HEMI.X1 + 2]) { P.rect(x - 2, HEMI.rowY(7, x) - 12, 4, HEMI.rowY(0, x) - HEMI.rowY(7, x) + 24, ['#e8d49a', '#8a6a22'], { stroke: '#3a2a08', lw: 0.5, wob: 0 }); }
+    // colonnes cannelées sur les côtés ; tentures
+    for (const x of [8, 612]) P.colonne(x, 22, 20, 178, { tone: '#f0e6c8', gold: true });
+    // sol : parquet verni et tapis
+    P.floor(194, 264, { type: 'boards', a: '#7a4c28', b: '#5e3a1c', top: [0, 640], bottom: [-120, 760], rows: 7 });
+    P.rug(320, 248, 300, 12, { color: '#7a1830' });
+    // porte de sortie (inchangée : côté droit)
     P.rect(594, 112, 46, 92, '#c89a36', { stroke: '#5a3e0e', lw: 0.9 }); P.door(598, 118, 38, 86, { wood: '#f2ead2', handle: '#c89a36', arch: true, bands: false }); P.dorure(594, 108, 46, 4);
-    // perchoir : estrade en marbre, cadre doré, grande tenture pourpre à frange, fauteuil
-    P.rect(228, 40, 184, 114, ['#d4bb82', '#8a7040'], { stroke: '#4a3a1a', lw: 0.9, wob: 0 }); P.dorure(228, 36, 184, 6);
-    P.tentureHD(246, 52, 148, 90, '#6e1c2a', { frange: '#d8b048' });
-    P.circle(320, 82, 30, ['rgba(232,196,96,.22)', 'rgba(232,196,96,0)']); P.glow(320, 80, 62, '#ffd890', 0.3);
-    P.tricolore(250, 140, 82); P.tricolore(384, 140, 82);
+    // ---- perchoir au centre, devant les gradins : dossier marbre, draperie, drapeaux, fauteuil doré, estrade ----
+    P.rect(226, 98, 188, 70, ['#d4bb82', '#8a7040'], { stroke: '#4a3a1a', lw: 0.9, wob: 0 }); P.dorure(226, 94, 188, 6);
+    P.tentureHD(258, 106, 124, 58, '#6e1c2a', { frange: '#d8b048' });
+    P.circle(320, 124, 26, ['rgba(232,196,96,.22)', 'rgba(232,196,96,0)']); P.glow(320, 122, 54, '#ffd890', 0.3);
+    P.tricolore(244, 150, 62); P.tricolore(396, 150, 62);
     P.stone(262, 160, 130, 36, { tone: '#b49a60', course: 9, block: 28 }); P.poly([[262, 160], [378, 160], [392, 196], [248, 196]], 'rgba(60,40,10,.3)', { stroke: '#3a2a10', lw: 0.8, wob: 0 });
     P.fauteuilDore(320, 140, 1.3, '#8a1426');
     P.rect(246, 160, 148, 8, ['#f0e2a8', '#a8842c'], { stroke: '#4a3a1a', lw: 0.8, wob: 0 });
     P.rect(300, 176, 40, 22, ['#d2a858', '#6a4a18'], { stroke: '#4a3a10', lw: 0.8, wob: 0 }); P.rect(316, 170, 8, 8, '#1c1c24');
-    // banc du gouvernement (cuir rouge, bois sombre)
+    // banc du gouvernement (premier plan gauche)
     P.rect(26, 194, 190, 14, ['#80202a', '#3a0a10'], { stroke: '#1a0408', lw: 0.8, wob: 0 }); P.rect(26, 208, 190, 12, ['#aa2c34', '#5a1018'], { stroke: '#1a0408', lw: 0.8, wob: 0 }); P.rect(26, 220, 190, 5, '#4a3018');
     P.shadow(120, 226, 110, 5, 0.4);
-    // grand lustre de cristal
     P.lustreHD(320, 22, 1.0);
     P.reflet(200, 60, 0.12);
     P.ao(0, 0, 640, 264, { d: 24, a: 0.18 }); P.vignette(0.4, '#0e0a08');
@@ -10680,15 +10747,16 @@ AK.piece({
     P.rect(280, 156, 80, 30, ['#c8a050', '#7a5a22'], { stroke: '#4a3a10', lw: 1, wob: 0 }); P.dorure(280, 154, 80, 4);
     P.rect(300, 162, 40, 4, '#f4efe0', { wob: 0 }); P.circle(320, 176, 5, '#e8c15a', { stroke: '#4a3a10', lw: 1 });
   },
+  props: [{ id: 'deputes', y: 90, layer: 'back', draw(P, api, t) { HEMI.draw(P.ctx, t); } }],
   hotspots: [
     { id: 'porte_retour', name: 'Porte — retour salle des Quatre‑Colonnes', rect: [594, 112, 46, 92], walkTo: [606, 244, 'r'], exit: { scene: 'assemblee', spawn: 'hemicycle' }, desc: ['La porte par laquelle je suis entré. Les huissiers n\'aiment pas qu\'on sorte en séance sans raison.'] },
-    { id: 'tribune_invites', name: 'Tribune du public', rect: [40, 30, 560, 40], far: true, desc: ['La tribune du public : des lycéens, des journalistes et des retraités en visite. Le silence est de rigueur — et il est rarement respecté.'] },
-    { id: 'travees_gauche', name: 'Travées de gauche', rect: [0, 100, 215, 100], far: true, desc: ['Les bancs de l\'opposition de gauche : rouge sur rouge. On y chante rarement en même temps.'] },
-    { id: 'travees_droite', name: 'Travées de droite', rect: [425, 100, 215, 100], far: true, desc: ['Les bancs de la droite et du centre : même cuir, autres sourires. Les groupes sont plus nombreux que les places libres.'] },
-    { id: 'perchoir', name: 'Perchoir', rect: [234, 40, 172, 156], walkTo: [320, 214, 'b'], desc: ['Le perchoir : l\'estrade du président de séance, qui distribue la parole et le temps. Deux minutes par question, pas une de plus.'] },
+    { id: 'tribune_invites', name: 'Tribune du public', rect: [40, 28, 548, 36], far: true, desc: ['La tribune du public : des lycéens, des journalistes et des retraités en visite. Le silence est de rigueur — et il est rarement respecté.'] },
+    { id: 'travees_gauche', name: 'Travées de gauche', rect: [44, 66, 178, 124], far: true, desc: ['Les bancs de l\'opposition de gauche : rouge sur rouge. On y chante rarement en même temps.'] },
+    { id: 'travees_droite', name: 'Travées de droite', rect: [420, 66, 168, 124], far: true, desc: ['Les bancs de la droite et du centre : même cuir, autres sourires. Les groupes sont plus nombreux que les places libres.'] },
+    { id: 'perchoir', name: 'Perchoir', rect: [228, 98, 184, 98], walkTo: [320, 214, 'b'], desc: ['Le perchoir : l\'estrade du président de séance, qui distribue la parole et le temps. Deux minutes par question, pas une de plus.'] },
     { id: 'tribune_orateur', name: 'Tribune de l\'orateur', rect: [296, 170, 48, 30], walkTo: [320, 222, 'b'], desc: ['La tribune d\'où l\'on parle aux 577 députés. Sur le mur d\'en face, un chronomètre rappelle à chacun que le temps est compté.'] },
     { id: 'bancs_gouv', name: 'Banc du gouvernement', rect: [26, 192, 190, 34], walkTo: [120, 244, 'b'], desc: ['Le banc du gouvernement : les ministres y répondent, chacun à son tour, sous les caméras.'] },
-    { id: 'tapisserie', name: 'Draperie du perchoir', rect: [246, 52, 148, 90], far: true, desc: ['Une draperie pourpre derrière le président de séance, bordée d\'or. Elle ne bouge pas, même pendant les rappels à l\'ordre.'] },
+    { id: 'tapisserie', name: 'Draperie du perchoir', rect: [258, 106, 124, 58], far: true, desc: ['Une draperie pourpre derrière le président de séance, bordée d\'or. Elle ne bouge pas, même pendant les rappels à l\'ordre.'] },
     { id: 'verriere', name: 'Verrière', rect: [150, 0, 340, 18], far: true, desc: ['Une verrière : le jour d\'automne filtre, doré, sur les débats.'] },
   ],
   npcs: [
