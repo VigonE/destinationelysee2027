@@ -4423,16 +4423,17 @@ AK.config({
     { if: ['ch_2', '!ch_3', '!seq_qag', '!has:cocarde'], say: 'À l\'Assemblée, dans la salle des Quatre‑Colonnes : une cocarde de député pend au vestiaire. L\'huissier exigera la cocarde pour entrer dans l\'hémicycle.' },
     { if: ['ch_2', '!ch_3', '!seq_qag', '!acces_hemicycle'], say: 'Donnez la cocarde à l\'huissier, puis franchissez la grande porte de l\'hémicycle.' },
     { if: ['ch_2', '!ch_3', '!seq_qag'], say: 'Dans l\'hémicycle, remettez la fiche de question à la présidente de séance : vous poserez votre question.' },
-    { if: ['ch_2', '!ch_3', 'hero:marion', '!seq_signatures', '!has:feuille_signatures'], say: 'Palais Bourbon : prenez le formulaire de motion de censure sur le pupitre des huissiers. Il faut 58 signatures.' },
-    { if: ['ch_2', '!ch_3', 'hero:marion', '!seq_signatures'], say: 'Faites signer la feuille : Brun (de bon cœur), Rochas (montrez‑lui le dossier d\'amendements), Odile Marchand (les éléments de langage), Yann Le Goff (le gilet fluo).' },
+    { if: ['ch_2', '!ch_3', 'hero:marion', 'seq_matignon', '!seq_choc493'], say: 'Après Matignon, le 49.3 va tomber : rejoignez votre directrice de campagne au QG.' },
+    { if: ['ch_2', '!ch_3', 'hero:marion', 'seq_choc493', '!seq_signatures', '!has:feuille_signatures'], say: 'Palais Bourbon : prenez le formulaire de motion de censure sur le pupitre des huissiers. Il faut 58 signatures.' },
+    { if: ['ch_2', '!ch_3', 'hero:marion', '!seq_signatures', 'has:feuille_signatures'], say: 'Faites signer la feuille : Brun (de bon cœur), Rochas (montrez‑lui le dossier d\'amendements), Odile Marchand (les éléments de langage), Yann Le Goff (le gilet fluo).' },
     { if: ['ch_2', '!ch_3', 'hero:leon', '!seq_tract'], say: 'À la Bourse du travail : la ronéo attend une matrice (sur le pupitre), de l\'encre (dans l\'armoire) et du papier (la ramette du QG).' },
     { if: ['ch_2', '!ch_3', 'hero:bernard', '!seq_chiffrage'], say: 'À Bercy : branchez la clé USB du modèle sur l\'ordinateur, puis faites relire le contre‑chiffrage à la ministre.' },
-    { if: ['ch_2', '!ch_3', 'hero:marion', '!seq_censure'], say: 'Gaëtan Brun, président du groupe, vous attend à l\'Assemblée nationale (salle des Quatre‑Colonnes).' },
+    { if: ['ch_2', '!ch_3', 'hero:marion', 'seq_signatures', '!seq_censure'], say: 'Gaëtan Brun, président du groupe, vous attend à l\'Assemblée nationale (salle des Quatre‑Colonnes) : la motion sera débattue demain, il faut fixer la consigne de vote.' },
     { if: ['ch_2', '!ch_3', 'hero:leon', '!seq_syndicats'], say: 'Mireille vous attend à la Bourse du travail.' },
     { if: ['ch_2', '!ch_3', 'hero:bernard', '!seq_bercy'], say: 'La ministre des Comptes publics vous attend à Bercy.' },
     { if: ['ch_2', '!ch_3', '!seq_doleances'], say: 'Facultatif : au café du Commerce, trois clients ont un petit service à demander (journal, chargeur, monnaie).' },
-    { if: ['ch_2', '!ch_3', '!seq_choc493'], say: 'Votre directeur de campagne vous attend au QG : le Premier ministre vient d\'engager le 49.3, la motion de censure se décide en vingt‑quatre heures.' },
-    { if: ['ch_2', '!ch_3', '!seq_mediapart'], say: 'Au QG : une enquête de presse paraît ce soir. Votre directeur de campagne attend votre réaction.' },
+    { if: ['ch_2', '!ch_3', 'seq_matignon', '!seq_choc493'], say: 'Votre directeur de campagne vous attend au QG : le Premier ministre vient d\'engager le 49.3, la motion de censure se décide en vingt‑quatre heures.' },
+    { if: ['ch_2', '!ch_3', 'seq_choc493', '!seq_mediapart'], say: 'Au QG : une enquête de presse paraît ce soir. Basile, le responsable de la communication, attend votre réaction.' },
     { if: ['ch_2', '!ch_3', 'hero:marion', '!seq_police'], say: 'À la permanence : la déléguée d\'un syndicat de police attend vos engagements.' },
     { if: ['ch_2', '!ch_3', 'hero:marion', '!seq_polemiste'], say: 'À l\'Assemblée : un polémiste de plateau vous propose un face-à-face.' },
     { if: ['ch_2', '!ch_3', 'hero:leon', '!seq_isf'], say: 'À la Maison de la gauche : l\'économiste Hélène Berthier veut savoir comment vous financerez votre programme.' },
@@ -5923,19 +5924,24 @@ AK.config({
   const act = (s) => ['ch_' + s.ch, '!seq_' + s.id].concat(s.cond || []);
   const line = ([who, say]) => ({ who, say });
 
+  AK.PARLER = AK.PARLER || {};                                   // registre des spécifications (audits, tests)
   AK.parler = (id, spec) => {
+    AK.PARLER[id] = spec;
     // V13 : un prompt peut être propre à chaque candidat ({ marion: [...], leon: [...], bernard: [...] }) → une entrée par candidat, gardée par « candidat_<id> »
     const seqs = [];
     for (const s of spec.seqs || []) {
       if (Array.isArray(s.prompt)) seqs.push(s);
       else for (const h of Object.keys(s.prompt)) seqs.push(Object.assign({}, s, { cond: (s.cond || []).concat('candidat_' + h), prompt: s.prompt[h] }));
     }
-    const say = seqs.map((s) => ({ if: act(s), then: s.prompt.map(line) }));
+    // V24 : un PNJ ne propose qu'UNE séquence à la fois (la première, dans l'ordre de déclaration, qui est active) :
+    // plus de prompts enchaînés ni de menus mélangés quand deux sujets arrivent au même moment.
+    const actSeul = (s, i) => act(s).concat(seqs.slice(0, i).map((q) => ({ not: { all: act(q) } })));
+    const say = seqs.map((s, i) => ({ if: actSeul(s, i), then: s.prompt.map(line) }));
     const rien = (r) => (r[2] ? { if: r[2], then: [line(r)] } : line(r));   // 3e élément facultatif : condition d'affichage de la réplique
     if (seqs.length) say.push({ if: { not: { any: seqs.map(act) } }, then: (spec.rien || []).map(rien) });
     else (spec.rien || []).forEach((r) => say.push(rien(r)));
     const choices = [];
-    for (const s of seqs) for (const c of AK.optsSeq(s.id, { if: act(s) })) choices.push(c);
+    seqs.forEach((s, i) => { for (const c of AK.optsSeq(s.id, { if: actSeul(s, i) })) choices.push(c); });
     for (const i of spec.info || []) choices.push({ text: i.text, once: i.once !== false, if: i.if, reply: i.reply.map(line) });
     choices.push({ text: spec.bye || 'À plus tard.', end: true, silent: true });
     AK.dialogue(id, { start: 'start', nodes: {
@@ -7230,15 +7236,18 @@ AK.config({
     marge: 'Sans majorité absolue, un gouvernement doit négocier chaque texte. Le Premier ministre reçoit les chefs de partis pour éviter la censure : on appelle cela « consulter ». Refuser de venir est aussi un message.',
     opts: {
       A: { t: 'Nous ne négocierons pas : nous censurerons, et nous demandons la dissolution.', v: { e: 4, r: 8, c: -3, m: 6, j: 2, l: 5 },
-        rep: [['pm', 'Je prends acte. Vous demandez des élections… que vous ne gagneriez peut‑être pas.']],
+        rep: [['pm', 'Je prends acte. Vous demandez des élections… que vous ne gagneriez peut‑être pas.'], ['pm', 'Mais je n\'attendrai pas votre censure : ce soir, j\'engage ma responsabilité sur le budget. Faites ce que vous jugerez bon.']],
         fiche: 'Refus de tout compromis : base galvanisée, image de blocage. La dissolution relève du seul Président.' },
       B: { t: 'Je discute : indexation des petites retraites contre le renoncement à la censure.', v: { e: 5, r: -4, c: 4, m: 1, j: -1, l: -3, p: 10 },
-        rep: [['pm', 'Un geste sur les pensions modestes… Je dois consulter Bercy. Mais le principe me paraît acceptable.']],
+        rep: [['pm', 'Un geste sur les pensions modestes… Je dois consulter Bercy. Mais le principe me paraît acceptable.'], ['pm', 'Hélas, le calendrier ne me laisse pas le temps de négocier avec chaque groupe : ce soir, j\'engage ma responsabilité sur le budget. Votre geste figurera dans le texte, je m\'y engage.']],
         fiche: 'Compromis parlementaire : un acquis concret, un parfum de « système » qui déplaît à vos électeurs les plus durs.' },
       C: { t: 'Demandons une loi spéciale : le budget attendra le printemps.', v: { r: -2, c: 2, m: 1 },
-        rep: [['pm', 'La loi spéciale, comme en 2024 et en 2025. Pratique. Un peu lâche, mais pratique.']],
+        rep: [['pm', 'La loi spéciale, comme en 2024 et en 2025. Pratique. Un peu lâche, mais pratique.'], ['pm', 'Sauf que je ne peux plus attendre : ce soir, j\'engage ma responsabilité sur le budget.']],
         fiche: 'Loi spéciale : pas de crise immédiate, pas de réforme non plus. Le problème est repoussé, pas résolu.' },
     } });
+
+  // le 49.3 est annoncé à la fin de l'entretien, quelle que soit la réponse : c'est ce qui déclenche la réunion de crise du QG (séquence « choc493 »)
+  for (const o of Object.values(AK.CAMPAGNE.SEQ.matignon.opts)) o.rep.push(['narrator', 'Le soir même, à vingt heures, le Premier ministre engage sa responsabilité sur le budget de la Sécurité sociale : c\'est le 49.3. Une motion de censure doit être déposée dans les vingt‑quatre heures. Votre directeur de campagne vous attend au QG.']);
 
   // ============================ CHAPITRE 3 — Février 2027 : les territoires =================================
   S('baron', {
@@ -7312,7 +7321,7 @@ AK.config({
 //    si : { k, min, ok:{v}, ko:{v}, okSay, koSay } — l'issue dépend de l'état de la campagne (crédibilité, médias…) : une crise
 //         se paie plus cher quand on est fragile ; c'est la mécanique « impitoyable ».
 //    h  : { marion|leon|bernard : { v, note } } — modificateur de DIFFICULTÉ propre à chaque candidat (ajouté au vecteur effectif).
-//  Hôtes (dialogues) : choc493 + mediapart + fronde → directeur de campagne (QG) ; donateur → Mme Fabre ; plafond → secrétaire général du CC.
+//  Hôtes (dialogues) : choc493 + fronde → directeur de campagne (QG) ; mediapart → Basile (QG, après choc493) ; donateur → Mme Fabre ; plafond → secrétaire général du CC.
 // ============================================================================
 (function (AK) {
   const S = AK.sequence;
@@ -7342,20 +7351,20 @@ AK.config({
     marge: 'Une enquête de presse n\'est pas une décision de justice : elle repose sur des documents et sur le secret des sources (loi du 4 janvier 2010). Le candidat peut exercer un droit de réponse ou porter plainte en diffamation — action prescrite par trois mois (loi de 1881). Si des faits pénaux sont suspectés, le Parquet national financier (créé en 2013) peut s\'autosaisir. Côté campagne, la Commission nationale des comptes de campagne peut rejeter un compte irrégulier : plus de remboursement de l\'État.',
     opts: {
       A: { t: 'Plainte en diffamation tout de suite, conférence de presse : « une campagne de caniveau ».', v: { m: 8, c: -5, j: 3, l: 4, t: -2 },
-        rep: [['dc', 'Le journaliste vous répond en une ligne : il publiera vos mises en demeure avec ses pièces.']],
+        rep: [['basile', 'Le journaliste vous répond en une ligne : il publiera vos mises en demeure avec ses pièces.']],
         fiche: 'Contre-attaque : pic de visibilité et de combativité. Si les pièces sont authentiques, l\'attaque contre la presse se retourne contre vous.',
         si: { k: 'cred', min: 38, ok: { v: { m: 2, l: 2 } }, ko: { v: { c: -4, m: -3, j: 3 } },
           okSay: 'Les pièces ne mettent pas en cause votre intégrité et votre crédibilité tient : la riposte passe pour de la combativité.',
           koSay: 'Votre crédibilité est trop fragile : la presse y voit un aveu. « Le candidat qui attaque ceux qui le questionnent » ouvre tous les journaux.' },
         h: { bernard: { v: { c: -1 }, note: 'Le candidat « responsable » qui insulte la presse déroute ses propres soutiens.' } } },
       B: { t: 'Je publie moi-même les factures, je saisis la Commission des comptes, mon mandataire se retire.', v: { c: 5, m: -4, j: -2, l: -3, t: -3 },
-        rep: [['dc', 'Transparence totale. Vous perdez la une du soir, vous gagnez le droit de regarder la presse dans les yeux. L\'audit, lui, sera facturé.']],
+        rep: [['basile', 'Transparence totale. Vous perdez la une du soir, vous gagnez le droit de regarder la presse dans les yeux. L\'audit, lui, sera facturé.']],
         fiche: 'Transparence : la crise est désamorcée, au prix d\'un audit coûteux et de quelques jours de défensive.',
         h: { leon: { v: { t: -2 }, note: 'Un audit complet, c\'est une facture qu\'une trésorerie tendue encaisse mal.' },
           marion: { v: { l: -1 }, note: 'Votre base soupçonne la presse de complot : elle n\'aime pas vous voir plier.' } } },
       C: { t: 'Droit de réponse, un avocat, puis le silence jusqu\'à l\'enquête du Parquet.', v: { c: 1, m: -3, l: -2, t: -3 },
         riv: [{ id: '@leader', m: 2, c: 1 }],
-        rep: [['dc', 'Un avocat, une ligne de défense, un silence. Les chaînes d\'info rempliront le vide pour vous.']],
+        rep: [['basile', 'Un avocat, une ligne de défense, un silence. Les chaînes d\'info rempliront le vide pour vous.']],
         fiche: 'Silence juridique : prudent devant les tribunaux, coûteux devant l\'opinion — et le favori de la course en profite.',
         si: { k: 'media', min: 45, ok: { v: { m: 1 } }, ko: { v: { m: -3, c: -2 } },
           okSay: 'Votre notoriété vous protège : la presse hésite à s\'acharner sur un candidat connu qui se tait.',
@@ -9316,7 +9325,7 @@ AK.item({ id: 'rapport_cdc', name: 'rapport de la Cour des comptes', icon: 'book
 (function () {
   // ---- Marion Castelle ----
   AK.parler('brun', {
-    seqs: [{ id: 'censure', ch: 2, prompt: [['brun', 'Le Premier ministre engage le 49.3 sur le budget. Notre groupe doit décider : on dépose la censure ?']] }],
+    seqs: [{ id: 'censure', ch: 2, cond: ['seq_signatures'], prompt: [['brun', 'La motion de censure est déposée : elle sera débattue demain dans l\'hémicycle, et il faut maintenant arrêter la consigne de vote du groupe.'], ['brun', 'Nous votons la censure, nous nous abstenons, ou nous posons une condition ?']] }],
     rien: [['brun', 'Les députés se préparent. Il faudra convaincre les autres groupes : nous ne sommes pas assez nombreux seuls.']],
     info: [{ text: 'Combien de voix pour censurer ?', reply: [['brun', '289, la majorité absolue. Tous les groupes d\'opposition réunis, sinon rien.']] }] });
   AK.parler('rochas', {
@@ -9458,7 +9467,9 @@ AK.item({ id: 'rapport_cdc', name: 'rapport de la Cour des comptes', icon: 'book
     seqs: [{ id: 'ligne', ch: 1, prompt: {
       marion: [['basile', 'Alors, Cheffe ? Un budget qui explose, un pays qui gronde, et ce fameux plafond de verre : quatre Français sur dix ne voteront jamais pour vous. Quelle ligne ?']],
       leon: [['basile', 'Alors, Léon ? Les syndicats gonflent les rangs, le patronat guette, et la gauche part en quatre candidatures. Quelle ligne ?']],
-      bernard: [['basile', 'Alors, Bernard ? Bruxelles nous regarde, Bercy nous regarde, les marchés aussi. Les électeurs, eux, regardent ailleurs. Quelle ligne ?']] } }],
+      bernard: [['basile', 'Alors, Bernard ? Bruxelles nous regarde, Bercy nous regarde, les marchés aussi. Les électeurs, eux, regardent ailleurs. Quelle ligne ?']] } },
+      { id: 'mediapart', ch: 2, cond: ['seq_choc493'], prompt: [['basile', 'Le 49.3 est passé, la censure aussi s\'est jouée… et voilà que « Le Grand Angle », un site d\'investigation, publie ce soir. Titre : « Les factures fantômes de la campagne ».'], ['basile', 'Cent quarante mille euros d\'« études » facturées à votre association de financement par une société que personne ne trouve. Le journaliste attend votre réaction avant minuit. Qu\'est‑ce qu\'on répond ?']] }],
+    // V24 : l'enquête de presse arrive APRÈS le 49.3 (et chez Basile, responsable de la communication), plus au même moment que lui
     rien: [['basile', 'Je surveille les chaînes d\'info, les polémiques et vos jauges. Dormir, c\'est pour après. Et le plafond de verre ne se brisera pas tout seul, Cheffe.', 'candidat_marion'],
       ['basile', 'Je surveille les sondages, les piquets de grève et les réseaux. Ils nous aiment, camarade : tant qu\'on ne gouverne pas.', 'candidat_leon'],
       ['basile', 'Je surveille le spread, l\'Eurogroupe et vos jauges. Tout est en ordre. Presque trop : c\'est suspect.', 'candidat_bernard']],
@@ -9471,8 +9482,7 @@ AK.item({ id: 'rapport_cdc', name: 'rapport de la Cour des comptes', icon: 'book
   const dcs = { marion: 'Mathilde Garrec', leon: 'Karim Lévêque', bernard: 'Olivier Tessier' };
   for (const h of Object.keys(dcs)) AK.parler('dc_' + h, {
     seqs: [
-      { id: 'choc493', ch: 2, prompt: [['dc_' + h, 'Le Premier ministre vient d\'engager sa responsabilité sur le budget de la Sécurité sociale : c\'est le 49.3. Nous avons vingt‑quatre heures pour décider.'], ['dc_' + h, 'Une motion de censure exige 58 signatures et 289 voix POUR. Les absents ne comptent pas, les abstentions non plus. Alors, on fait quoi ?'], ['dc_' + h, { marion: 'Notre groupe pèse moins de cent voix : sans la gauche ni la droite, la censure ne passe pas.', leon: 'La gauche est éparpillée : réunir 289 voix, c\'est un exercice de patience, pas de slogans.', bernard: 'Vous avez soutenu cette majorité : censurer, c\'est renier ; ne rien faire, c\'est se noyer.' }[h]]] },
-      { id: 'mediapart', ch: 2, prompt: [['dc_' + h, 'Alerte rouge : le site d\'investigation « Le Grand Angle » publie ce soir. Titre : « Les factures fantômes de la campagne ».'], ['dc_' + h, 'Cent quarante mille euros d\'« études » facturées à votre association de financement par une société que personne ne trouve. Le journaliste attend votre réaction avant minuit.']] },
+      { id: 'choc493', ch: 2, cond: ['seq_matignon'], prompt: [['dc_' + h, 'Le Premier ministre vient d\'engager sa responsabilité sur le budget de la Sécurité sociale : c\'est le 49.3. Nous avons vingt‑quatre heures pour décider.'], ['dc_' + h, 'Une motion de censure exige 58 signatures et 289 voix POUR. Les absents ne comptent pas, les abstentions non plus. Alors, on fait quoi ?'], ['dc_' + h, { marion: 'Notre groupe pèse moins de cent voix : sans la gauche ni la droite, la censure ne passe pas.', leon: 'La gauche est éparpillée : réunir 289 voix, c\'est un exercice de patience, pas de slogans.', bernard: 'Vous avez soutenu cette majorité : censurer, c\'est renier ; ne rien faire, c\'est se noyer.' }[h]]] },
       { id: 'fronde', ch: 4, cond: ['seq_parrainages'], prompt: [['dc_' + h, 'Soixante hauts fonctionnaires — Conseil d\'État, Cour des comptes, Bercy — préparent une tribune : votre programme serait « intenable ». Ils menacent de transmettre des notes internes à la presse.'], ['dc_' + h, 'Certaines notes sont couvertes par le devoir de réserve. D\'autres, non. Votre réponse décidera de qui parle.']] },
       { id: 'plf', ch: 1, cond: ['seq_amendement'], prompt: [['dc_' + h, 'Le budget arrive à l\'Assemblée mi‑novembre. Le groupe attend votre consigne : on vote quoi ?'], ['dc_' + h, 'Rappel : le déficit visé est de 5 % du PIB, avec gel du point d\'indice et des pensions au‑dessus de 1 260 €.']] }
     ],
@@ -9534,7 +9544,7 @@ AK.item({ id: 'rapport_cdc', name: 'rapport de la Cour des comptes', icon: 'book
   AK.parler('pm', {
     seqs: [{ id: 'matignon', ch: 2, prompt: [['dircab', 'Le Premier ministre vous reçoit. Il cherche des voix pour son budget.'], ['pm', 'Pas de majorité, pas de budget. Que proposez‑vous, pour que nous évitions la censure ?']] }],
     rien: [['pm', 'Nous nous reverrons. Le budget, lui, n\'attendra pas.']],
-    info: [{ text: 'Et le 49.3 ?', reply: [['pm', 'Je l\'ai déjà utilisé. Chaque recours expose le gouvernement à une motion de censure. C\'est un pari.']] }] });
+    info: [{ text: 'Et le 49.3 ?', reply: [['pm', 'C\'est une arme à double tranchant : le texte passe sans vote, mais je m\'expose à une motion de censure. Je ne m\'en servirai que si la négociation échoue.']] }] });
   AK.parler('dircab', {
     rien: [['dircab', 'Le Premier ministre est aux affaires. Il vous recevra, nous veillons à son agenda.']],
     bye: 'Merci.' });
@@ -9667,7 +9677,7 @@ AK.piece({
   id: 'assemblee', name: 'Assemblée nationale — salle des Quatre‑Colonnes', music: 'baroque', sortie: false,
   walk: { areas: [[[18, 192], [586, 192], [634, 258], [6, 258]]], holes: [[[236, 192], [348, 192], [348, 214], [236, 214]]] },
   spawns: { default: [90, 240, 'r'], hemicycle: [540, 240, 'l'] },
-  variant: (s) => (s.hidden('cocarde') ? 'c' : 'k') + (s.hidden('feuille_signatures') ? 's' : 'f'),
+  variant: (s) => (s.hidden('cocarde') ? 'c' : 'k') + (s.hidden('feuille_signatures') || !s.flag('candidat_marion') || !s.flag('seq_choc493') ? 's' : 'f'),
   lighting: { ambient: { color: '#281c30', alpha: 0.16 }, key: { x: 320, y: 0, color: '#ffe8b8', alpha: 0.3, shadow: true, shadowAlpha: 0.3 }, lights: [{ x: 160, y: 60, r: 170, color: '#ffd89a', alpha: 0.24 }, { x: 480, y: 60, r: 170, color: '#ffd89a', alpha: 0.24 }] },
   fx: [{ type: 'dust', n: 34, alpha: 0.4 }, { type: 'shafts', color: '#ffe8b8', alpha: 0.1, beams: [{ top: [260, 380, 14], bottom: [220, 430, 200], alpha: 0.12 }] }],
   paint(P, s) {
@@ -9701,7 +9711,7 @@ AK.piece({
     // pupitre d'accueil des huissiers : registre, feuille de signatures
     P.table(236, 214, 112, 22, { color: '#4a2a18', depth: 10 });
     P.rect(246, 192, 36, 8, '#f4f0e0', { stroke: true }); P.rect(290, 190, 24, 10, '#2e5a9a', { stroke: true });
-    if (!s.hidden('feuille_signatures')) { P.rect(322, 192, 22, 10, '#fff4d0', { stroke: true, wob: 0 }); P.line(325, 195, 341, 195, 'rgba(0,0,0,.45)', 1); P.line(325, 198, 338, 198, 'rgba(0,0,0,.35)', 1); }
+    if (!s.hidden('feuille_signatures') && s.flag('candidat_marion') && s.flag('seq_choc493')) { P.rect(322, 192, 22, 10, '#fff4d0', { stroke: true, wob: 0 }); P.line(325, 195, 341, 195, 'rgba(0,0,0,.45)', 1); P.line(325, 198, 338, 198, 'rgba(0,0,0,.35)', 1); }
     // plan de l'hémicycle encadré, bancs, plantes
     P.cadreDore(236, 36, 112, 76, ['#2a2a40', '#14142a']);
     for (let r = 0; r < 4; r++) P.curve([[248, 98 - r * 6], [284, 72 - r * 4], [300, 72 - r * 4], [336, 98 - r * 6]], r % 2 ? '#c8102e' : '#16409a', 2.4);
@@ -9720,7 +9730,7 @@ AK.piece({
     { id: 'porte_hemicycle', name: 'Porte de l\'hémicycle', rect: [512, 66, 94, 126], walkTo: [556, 236, 'b'], exit: { scene: 'hemicycle', spawn: 'default' }, locked: '!acces_hemicycle',
       lockedSay: [{ say: 'L\'huissier barre la porte de la main : « En séance, la cocarde est de rigueur, monsieur le député. »', who: 'huissier' }], desc: ['La grande porte de l\'hémicycle : 577 sièges, 289 pour la majorité absolue. La séance de questions est en cours.'] },
     { id: 'pupitre', name: 'Pupitre d\'accueil', rect: [236, 190, 112, 46], walkTo: [292, 244, 'b'], desc: ['Le pupitre des huissiers : badges, registre, sourires de circonstance.'], on: { open: ['Le registre est confidentiel.'] } },
-    { id: 'feuille_signatures', name: 'Formulaire de motion de censure', rect: [320, 188, 28, 16], walkTo: [334, 244, 'b'], takes: 'feuille_signatures', when: 'hero:marion',
+    { id: 'feuille_signatures', name: 'Formulaire de motion de censure', rect: [320, 188, 28, 16], walkTo: [334, 244, 'b'], takes: 'feuille_signatures', when: ['hero:marion', 'seq_choc493'],
       takeSay: ['Le formulaire de la motion de censure. Pour qu\'elle soit recevable, il faut la signature d\'au moins un dixième des députés : 58 sur 577.'], desc: 'Un formulaire vierge : « Motion de censure — article 49, alinéa 2 de la Constitution ».' },
     { id: 'plan_hemicycle', name: 'Plan de l\'hémicycle', rect: [236, 36, 112, 76], walkTo: [292, 244, 'b'], desc: ['Un plan de l\'hémicycle : chaque groupe a sa couleur. Pas de majorité absolue en vue, à l\'automne 2026.'] },
     { id: 'drapeaux_as', name: 'Drapeaux', rect: [486, 78, 20, 114], walkTo: [492, 240, 'b'], far: true, desc: ['Les drapeaux de la République, de part et d\'autre de la porte.'] },
@@ -11678,7 +11688,7 @@ AK.piece({
     eurogroupe: ['bercy', 'diplo'], cac40: ['bercy', 'pdg'], elysee: ['mairie', 'conseiller'], reformes: ['bercy', 'directeur'], haute_fonction: ['bercy', 'directeur'], spread: ['bercy', 'diplo'],
     police: ['permanence', 'policiere'], polemiste: ['assemblee', 'polemiste'], plafond_verre: ['assemblee', 'polemiste'], enclaves: ['permanence', 'mairerural'], metropoles: ['permanence', 'mairerural'], fait_divers: ['permanence', 'commissaire'],
     isf: ['maison_gauche', 'economiste'], salaires: ['bourse_travail', 'cheminot'], capitaux: ['maison_gauche', 'economiste'], ecologie: ['maison_gauche', 'militante'], greve_generale: ['bourse_travail', 'cheminot'], services: ['maison_gauche', 'militante'],
-    choc493: ['qg', 'dc'], mediapart: ['qg', 'dc'], fronde: ['qg', 'dc'], donateur: ['qg', 'fabre'], plafond: ['conseil_constit', 'sg'] };
+    choc493: ['qg', 'dc'], mediapart: ['qg', 'basile'], fronde: ['qg', 'dc'], donateur: ['qg', 'fabre'], plafond: ['conseil_constit', 'sg'] };
 
   // L : { séquence: lettre } ; fin : étapes finales ; stop : séquence après laquelle la partie s'arrête (défaite) — à la fin du chapitre qui la contient
   function partie(hero, L, fin, stop, ordre) {
