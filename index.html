@@ -3897,7 +3897,7 @@ function createMusic(a, out) {
     const c = P.ctx; if (!c) return;
     const h = api.state.hero; if (!CANDS.includes(h) || !api.var(h + '_cred')) return;
     const k = (c.canvas && c.canvas.width ? c.canvas.width / (P.w || 640) : 1);   // suit la qualité « économe » (canevas réduit)
-    const x0 = 506, y0 = 4, w = 128, hh = 94, bx0 = x0 - 4, by0 = y0 - 2, bw0 = w + 6, bh0 = hh;
+    const x0 = 506, y0 = 20, w = 128, hh = 94, bx0 = x0 - 4, by0 = y0 - 2, bw0 = w + 6, bh0 = hh;
     const key = h + '|' + k + '|' + JSON.stringify(api.state.vars);
     if (hudCache.key !== key || !hudCache.cv) {
       const cv = hudCache.cv && hudCache.cv.width === Math.ceil((bw0 + 2) * k) ? hudCache.cv : (typeof document !== 'undefined' ? document.createElement('canvas') : null);
@@ -3912,14 +3912,14 @@ function createMusic(a, out) {
     const st = lire(api); const cl = classement(st).filter(([id]) => id !== 'divers');
     const top = cl.slice(0, 4); if (!top.some(([id]) => id === h)) top[3] = cl.find(([id]) => id === h);
     c.save(); c.setTransform(k, 0, 0, k, -bx0 * k, -by0 * k);
-    const x0 = 506, y0 = 4, w = 128, hh = 94;
+    const x0 = 506, y0 = 20, w = 128, hh = 94;
     c.fillStyle = 'rgba(8,10,20,.78)'; c.fillRect(x0 - 4, y0 - 2, w + 6, hh); c.strokeStyle = 'rgba(240,193,75,.55)'; c.strokeRect(x0 - 3.5, y0 - 1.5, w + 5, hh - 1);
     c.font = 'bold 6px monospace'; c.textBaseline = 'middle'; c.fillStyle = '#f0c14b'; c.fillText('SONDAGE 1er TOUR', x0, y0 + 4);
     top.forEach(([id, p], i) => {
       const y = y0 + 12 + i * 8, me = id === h;
       c.fillStyle = me ? '#ffffff' : '#a9aec8'; c.fillText(nomc(id).slice(0, 8).toUpperCase(), x0, y);
       const bx = x0 + 44, bw = 58;
-      c.fillStyle = '#1c2033'; c.fillRect(bx, y - 2.5, bw, 5); c.fillStyle = me ? '#f0c14b' : '#6a7090'; c.fillRect(bx, y - 2.5, Math.round(bw * Math.min(1, p / 45)), 5);
+      c.fillStyle = '#1c2033'; c.fillRect(bx, y - 2.5, bw, 5); c.fillStyle = me ? '#f0c14b' : '#6a7090'; c.fillRect(bx, y - 2.5, Math.round(bw * Math.min(1, p / 40)), 5);
       c.fillStyle = me ? '#ffffff' : '#a9aec8'; c.fillText(f1(p), x0 + 105, y);
     });
     const jauge = (lab, v, col, y, tick) => {
