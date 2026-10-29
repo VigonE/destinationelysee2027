@@ -8123,7 +8123,7 @@ AK.config({
   const mq = (q) => { try { return window.matchMedia(q).matches; } catch (e) { return false; } };
   const phone = () => {
     if (qs === '0') return false; if (qs === '1') return true;
-    let small = false; try { small = Math.min(screen.width, screen.height) <= 700; } catch (e) { /* ignoré */ }
+    let small = false; try { small = Math.min(screen.width, screen.height) <= 1200; } catch (e) { /* ignoré */ }   // V26 : tablettes incluses (≤ 1200 px de petit côté)
     return mq('(pointer: coarse)') && small;
   };
   AK.PHONE = phone;
@@ -8274,6 +8274,9 @@ AK.config({
   if (AK.Runtime) {
     const rs0 = AK.Runtime.prototype.resize;
     AK.Runtime.prototype.resize = function () {
+      // V26 : une tablette (4:3) en paysage prend la même mise en page que le téléphone (le moteur la classerait « tall » sous 1,42)
+      if (phone() && this.params.layout !== 'tall' && this.params.layout !== 'wide') { this._lay0 = true; }
+      if (this._lay0 && phone()) { const land = window.innerWidth > window.innerHeight; if (land) this.params.layout = 'wide'; else delete this.params.layout; }
       rs0.call(this); if (!ov(this.ui)) return;
       const w = window.innerWidth, h = window.innerHeight, dpr = window.devicePixelRatio || 1, L = this.ui.L;
       const css = Math.min(w / L.w, h / L.totalH), S = css * dpr; this.S = S;
