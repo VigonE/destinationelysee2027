@@ -8959,6 +8959,57 @@ AK.config({
 })(globalThis.AK);
 
 
+/* ===== game/zz-zmenu.js ===== */
+// ============================================================================
+//  V29 — MENU ☰ AVEC ASCENSEUR (extension côté jeu ; le moteur n'est PAS modifié).
+//  Quand la liste des entrées est plus haute que l'écran (smartphone en paysage : 7 entrées de 34 px pour 264 px de scène),
+//  le menu n'affiche que les entrées qui tiennent, encadrées de deux flèches « ▲ plus haut » / « ▼ plus bas » (toucher ou clic),
+//  la molette de la souris défile aussi, et une barre d'ascenseur est dessinée sur le bord du cadre.
+//  Si tout tient (ordinateur, portrait), rien ne change. Chargé après zz-mobile et zz-stats : il enrobe leur résultat.
+// ============================================================================
+(function (AK) {
+  'use strict';
+  if (typeof window === 'undefined' || !AK.UI) return;
+  const UI = AK.UI.prototype;
+  const st = { off: 0, nVis: 0, total: 0, rect: null };
+  AK.menuScroll = st;
+
+  const mr0 = UI.menuRect;
+  UI.menuRect = function () {
+    const r = mr0.call(this), L = this.L;
+    const avail = L.totalH - 12, nMax = Math.floor((avail - 40) / r.rh);
+    st.rect = null; if (r.items.length <= nMax || nMax < 4) { st.off = 0; st.total = r.items.length; st.nVis = r.items.length; return r; }
+    const all = r.items, nVis = nMax - 2, maxOff = all.length - nVis;
+    st.off = Math.max(0, Math.min(maxOff, st.off)); st.total = all.length; st.nVis = nVis;
+    const haut = { label: st.off > 0 ? '▲  plus haut' : '', fn: () => { st.off = Math.max(0, st.off - 1); }, close: false };
+    const bas = { label: st.off < maxOff ? '▼  plus bas' : '', fn: () => { st.off = Math.min(maxOff, st.off + 1); }, close: false };
+    const items = [haut].concat(all.slice(st.off, st.off + nVis), [bas]);
+    const h = items.length * r.rh + 40, y = Math.max(6, 6 + (avail - h) / 2);
+    const out = { x: r.x, y, w: r.w, h, rh: r.rh, items }; st.rect = out; return out;
+  };
+
+  // molette : défilement du menu
+  window.addEventListener('wheel', (e) => {
+    const rt = window.AKGame && window.AKGame.runtime; if (!rt || !rt.ui || !rt.ui.menu || !st.rect) return;
+    st.off += e.deltaY > 0 ? 1 : -1; e.preventDefault();
+  }, { passive: false });
+
+  const upd = UI.update;
+  UI.update = function (dt) { upd.call(this, dt); if (!this.menu) st.off = 0; };
+
+  // barre d'ascenseur sur le bord droit du cadre (dessinée par-dessus le menu)
+  const dov = UI.drawOverlay;
+  UI.drawOverlay = function (ctx, S, hero) {
+    dov.call(this, ctx, S, hero);
+    if (!this.menu || !st.rect || st.total <= st.nVis) return;
+    const r = st.rect, x = r.x + r.w - 6, y0 = r.y + 32 + r.rh, h = (r.items.length - 2) * r.rh, th = Math.max(14, h * st.nVis / st.total);
+    const ty = y0 + (h - th) * (st.off / Math.max(1, st.total - st.nVis));
+    ctx.save(); ctx.scale(S, S); ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(x, y0, 3, h);
+    ctx.fillStyle = this.accent || '#ffd35a'; ctx.fillRect(x, ty, 3, th); ctx.restore();
+  };
+})(globalThis.AK);
+
+
 /* ===== game/characters/characters.js ===== */
 // Personnages « politique » (silhouettes adultes réalistes). Candidats fictifs ; Léa guide l'écran de sélection.
 const K = 'politique';
