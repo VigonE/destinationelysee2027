@@ -8606,13 +8606,25 @@ AK.config({
   }
   AK.vieBloque = bloque;                          // exposé pour les tests / le débogage
 
+  // ---- V27 : deux PNJ ne se superposent jamais (sinon on ne peut plus cliquer sur celui qui est derrière) ----
+  const larg = (g, o, y) => { const ch = g.reg.characters[o.def.char]; if (!ch) return 20; return AK.charMetrics(ch).w * U.depthScale(g.sc(), y) * 0.8; };
+  function colle(g, n, x, y) {
+    for (const o of g.sceneNpcs()) {
+      if (o === n || o.id === n.id || o.st.visible === false) continue;
+      const dx = Math.abs(o.st.x - x), dy = Math.abs(o.st.y - y);
+      if (dx < (larg(g, n, y) + larg(g, o, o.st.y)) * 0.75 + 4 && dy < 12) return true;
+    }
+    return false;
+  }
+  AK.vieColle = colle;
+
   function pickTarget(g, n, a) {
     const nav = g.nav(g.state.scene); const d = n.def; const r = d.roam || {};
     const rx = r.rx !== undefined ? r.rx : RX, ry = r.ry !== undefined ? r.ry : RY;
     for (let k = 0; k < 36; k++) {
       const gr = k < 9 ? 1 : k < 18 ? 1.8 : k < 27 ? 2.6 : 3.4;     // si le voisinage est encombré d'objets, on cherche plus loin (jamais devant un objet)
       const x = a.home.x + rnd(-rx, rx) * gr, y = a.home.y + rnd(-ry, ry) * (gr > 1 ? 1.5 : 1);
-      if (!nav.walkable(x, y) || bloque(g, n, x, y)) continue;
+      if (!nav.walkable(x, y) || bloque(g, n, x, y) || colle(g, n, x, y)) continue;
       if (Math.hypot(x - n.st.x, y - n.st.y) < 16) continue;
       const h = g.hero();                         // ne pas se coller au héros
       if (h && h.scene === g.state.scene && Math.hypot(x - h.x, (y - h.y) * 2) < 26) continue;
@@ -8636,10 +8648,12 @@ AK.config({
         const p = n.st; let budget = (g.cfg.walkSpeed || 78) * SPEED * U.depthScale(sc, p.y) * dt; st.speedMul = 0.8;
         while (budget > 0 && a.i < a.path.length) {
           const t = a.path[a.i]; const dx = t.x - p.x, dy = t.y - p.y; const d = Math.hypot(dx, dy);
+          const nx = d <= budget ? t.x : p.x + (dx / d) * budget, ny = d <= budget ? t.y : p.y + (dy / d) * budget;
+          if (!colle(g, n, p.x, p.y) && colle(g, n, nx, ny)) { a.path = null; st.moving = false; a.wait = rnd(1, 2.5); break; }   // quelqu'un barre le chemin : on s'arrête
           if (d <= budget) { p.x = t.x; p.y = t.y; budget -= d; a.i++; } else { p.x += (dx / d) * budget; p.y += (dy / d) * budget; budget = 0; }
           if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) p.dir = Math.abs(dy) > Math.abs(dx) * 2.4 ? (dy < 0 ? 'b' : 'f') : dx >= 0 ? 'r' : 'l';
         }
-        if (a.i >= a.path.length) {               // arrivé : on s'arrête, on regarde (ou pas) le héros
+        if (a.path && a.i >= a.path.length) {   // arrivé : on s'arrête, on regarde (ou pas) le héros
           a.path = null; st.moving = false; a.wait = rnd(3, 9);
           const h = g.hero();
           if (h && Math.random() < 0.65) p.dir = h.x < p.x ? 'l' : 'r'; else if (Math.random() < 0.5) p.dir = p.dir === 'l' ? 'r' : 'l';
@@ -8647,7 +8661,7 @@ AK.config({
         a.last.x = n.st.x; a.last.y = n.st.y;
       } else {
         a.wait -= dt;
-        if (a.wait > 0.8 && bloque(g, n, n.st.x, n.st.y)) a.wait = 0.8;      // il gêne un objet : il s'écarte vite
+        if (a.wait > 0.8 && (bloque(g, n, n.st.x, n.st.y) || colle(g, n, n.st.x, n.st.y))) a.wait = 0.8;      // il gêne un objet : il s'écarte vite
         if (a.wait <= 0) {
           const path = pickTarget(g, n, a);
           if (path) { a.path = path; a.i = 0; st.moving = true; } else a.wait = rnd(2, 5);
@@ -8669,7 +8683,7 @@ AK.config({
           const gr = k < 9 ? 1 : k < 18 ? 1.8 : k < 27 ? 2.6 : 3.4;
           const x = a.home.x + rnd(-RX, RX) * gr, y = a.home.y + rnd(-RY, RY) * (gr > 1 ? 1.5 : 1);
           const h = g.hero();
-          if (!nav.walkable(x, y) || bloque(g, n, x, y) || (h && Math.hypot(x - h.x, (y - h.y) * 2) < 30)) continue;
+          if (!nav.walkable(x, y) || bloque(g, n, x, y) || colle(g, n, x, y) || (h && Math.hypot(x - h.x, (y - h.y) * 2) < 30)) continue;
           n.st.x = x; n.st.y = y; n.st.dir = Math.random() < 0.5 ? 'l' : 'r'; a.last.x = x; a.last.y = y; break;
         }
         a.wait = rnd(1, 5);
