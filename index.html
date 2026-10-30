@@ -8547,6 +8547,152 @@ AK.config({
 })(globalThis.AK);
 
 
+/* ===== game/zz-stats.js ===== */
+// ============================================================================
+//  V28 — STATISTIQUES LÉGÈRES (vues, visiteurs uniques, fins) — extension côté jeu, le moteur n'est PAS modifié.
+//  Service : Abacus (https://abacus.jasoncameron.dev) — compteurs ouverts, gratuits, sans compte ni clé, CORS autorisé.
+//    GET /hit/<espace>/<clé> → +1 (crée le compteur)    GET /get/<espace>/<clé> → valeur (404 = jamais incrémenté)
+//  Sécurité : AUCUN secret dans le code ; on n'envoie que « +1 » sur un nom de compteur (aucun identifiant de joueur).
+//  Les compteurs sont publics et falsifiables : ce sont des indications, pas des chiffres certifiés.
+//  Règles de comptage :
+//   • robots / crawlers / navigateurs automatisés (User-Agent, navigator.webdriver) : jamais comptés ;
+//   • vue : une seule par session de navigation (sessionStorage) ; visiteur unique : un seul « +1 » par navigateur (localStorage) ;
+//   • rien n'est compté en local (file://, localhost), en mode ?nosave=1 / ?debug=1 / ?stats=0, ni dans les tests (headless) ;
+//   • fins : +1 « fin_elu » ou « fin_battu » quand une partie se termine (une fois par partie).
+//  Affichage : entrée « Statistiques » du menu ☰ → fenêtre avec une LED verte (service joignable) ou rouge (injoignable), rafraîchie toutes les 20 s.
+//  Le jeu ne dépend jamais de ce service : en cas d'erreur, il continue normalement.
+// ============================================================================
+(function (AK) {
+  'use strict';
+  const BASE = 'https://abacus.jasoncameron.dev';
+  const NS = 'destination-elysee-2027';
+  const CLES = { vues: 'vues', uniques: 'uniques', elu: 'fin_elu', battu: 'fin_battu' };
+
+  // ---- filtre des robots (pur : testable sans navigateur) ----
+  const RE_BOT = /bot\b|bots\b|crawl|spider|slurp|scrape|fetch|headless|phantom|puppeteer|playwright|selenium|lighthouse|pagespeed|gtmetrix|pingdom|uptime|monitor|facebookexternalhit|preview|archive|wget|curl|python|java\/|go-http|okhttp|httpclient|axios|node-fetch|libwww|mediapartners|bingpreview|ahrefs|semrush|mj12|yandex|baidu|duckduck|petal|dataprovider|screenshot/i;
+  const estBot = (ua, webdriver) => {
+    if (webdriver) return true;
+    if (!ua || typeof ua !== 'string' || ua.length < 20) return true;
+    return RE_BOT.test(ua);
+  };
+  const fmt = (n) => (Number.isFinite(n) ? Math.round(n).toLocaleString('fr-FR') : '—');
+
+  AK.stats = { BASE, NS, CLES, estBot };
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;   // tests / headless : rien d'autre
+
+  const params = (() => { try { return new URLSearchParams(location.search); } catch (e) { return new URLSearchParams(''); } })();
+  const local = location.protocol === 'file:' || /^(localhost|127\.|0\.0\.0\.0|\[::1\])/.test(location.hostname || '');
+  const muet = local || params.has('nosave') || params.has('debug') || params.get('stats') === '0';
+  const bot = estBot(typeof navigator !== 'undefined' ? navigator.userAgent : '', typeof navigator !== 'undefined' && navigator.webdriver);
+  AK.stats.actif = !muet && !bot;
+
+  // ---- appels réseau (jamais bloquants, jamais d'exception) ----
+  const appel = (route, cle) => {
+    const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const t = setTimeout(() => { try { ctl && ctl.abort(); } catch (e) { /* ignoré */ } }, 6000);
+    return fetch(BASE + '/' + route + '/' + NS + '/' + cle, { method: 'GET', mode: 'cors', cache: 'no-store', credentials: 'omit', referrerPolicy: 'no-referrer', signal: ctl ? ctl.signal : undefined })
+      .then((r) => {
+        if (r.status === 404 && route === 'get') return { ok: true, value: 0 };          // compteur jamais incrémenté : le service répond bien
+        if (!r.ok) return { ok: false };
+        return r.json().then((j) => { const v = Number(j && j.value); return Number.isFinite(v) ? { ok: true, value: v } : { ok: false }; });
+      })
+      .catch(() => ({ ok: false }))
+      .finally(() => clearTimeout(t));
+  };
+  const hit = (cle) => appel('hit', cle);
+  AK.stats.hit = hit;
+
+  const stock = (kind) => { try { const s = window[kind]; s.setItem('ak:stat:t', '1'); s.removeItem('ak:stat:t'); return s; } catch (e) { return null; } };
+  function compter() {
+    if (!AK.stats.actif) return;
+    const ss = stock('sessionStorage'), ls = stock('localStorage');
+    if (ss) { if (ss.getItem('ak:stat:v') === '1') return; ss.setItem('ak:stat:v', '1'); }   // déjà compté pour cette session
+    hit(CLES.vues);
+    if (ls && ls.getItem('ak:stat:u') !== '1') { ls.setItem('ak:stat:u', '1'); hit(CLES.uniques); }
+  }
+  setTimeout(compter, 2500);
+
+  // ---- fin de partie : +1 (une fois par partie) ----
+  let finVue = false;
+  setInterval(() => {
+    try {
+      const g = window.AKGame && window.AKGame.game; if (!g || !g.ended) { finVue = false; return; }
+      if (finVue || !AK.stats.actif) return; finVue = true;
+      hit(g.flag && g.flag('partie_perdue') ? CLES.battu : (g.state && g.state.flags && g.state.flags.partie_perdue) ? CLES.battu : CLES.elu);
+    } catch (e) { /* ignoré */ }
+  }, 2000);
+
+  // ---- fenêtre « Statistiques » (LED verte / rouge) ----
+  const UI = AK.UI ? AK.UI.prototype : null; if (!UI) return;
+  const etat = { open: false, t: 0, led: 'attente', vues: NaN, uniques: NaN, elu: NaN, battu: NaN, maj: 0, timer: null };
+  AK.stats.etat = etat;
+
+  async function rafraichir() {
+    etat.led = etat.led === 'ok' || etat.led === 'ko' ? etat.led : 'attente';
+    const rs = await Promise.all([appel('get', CLES.vues), appel('get', CLES.uniques), appel('get', CLES.elu), appel('get', CLES.battu)]);
+    const ok = rs.every((r) => r.ok);                                   // LED verte : les 4 lectures ont abouti
+    etat.led = ok ? 'ok' : 'ko';
+    if (ok) { etat.vues = rs[0].value; etat.uniques = rs[1].value; etat.elu = rs[2].value; etat.battu = rs[3].value; etat.maj = Date.now(); }
+  }
+  AK.stats.rafraichir = rafraichir;
+  AK.stats.afficher = function () {
+    etat.open = true; etat.t = 0; etat.led = 'attente'; rafraichir();
+    clearInterval(etat.timer); etat.timer = setInterval(() => { if (etat.open) rafraichir(); else clearInterval(etat.timer); }, 20000);
+  };
+  const fermer = () => { etat.open = false; clearInterval(etat.timer); };
+  AK.stats.fermer = fermer;
+
+  // entrée de menu ☰ (ajoutée sans toucher au moteur ; la hauteur du cadre suit)
+  const mr0 = UI.menuRect;
+  UI.menuRect = function () {
+    const r = mr0.call(this);
+    if (!r.items.some((i) => i._stats)) {
+      r.items = r.items.concat([{ label: 'Statistiques', fn: () => AK.stats.afficher(), _stats: true }]);
+      r.h += r.rh; r.y = Math.max(4, r.y - r.rh / 2);
+    }
+    return r;
+  };
+
+  const upd = UI.update;
+  UI.update = function (dt) { upd.call(this, dt); if (etat.open) etat.t += dt; };
+  const pd = UI.pointerDown;
+  UI.pointerDown = function (x, y, b) { if (etat.open) { if (etat.t > 0.3) fermer(); return; } return pd.call(this, x, y, b); };
+  const ky = UI.key;
+  UI.key = function (k) { if (etat.open) { if (etat.t > 0.3 && (k === ' ' || k === 'Enter' || k === 'Escape')) fermer(); return; } return ky.call(this, k); };
+
+  function dessiner(ui, ctx) {
+    const L = ui.L, W = L.w, H = L.totalH, t = etat.t, a = Math.min(1, t / 0.2);
+    ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = 'rgba(0,0,0,0.72)'; ctx.fillRect(0, 0, W, H);
+    const pw = Math.min(W - 24, 300), ph = 150, px = (W - pw) / 2, py = Math.max(6, (L.viewH - ph) / 2 + 4);
+    ui.rrect(ctx, px, py, pw, ph, 8); ctx.fillStyle = '#1b1230'; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = ui.accent || '#ffd35a'; ctx.stroke();
+    ctx.textBaseline = 'middle'; ctx.textAlign = 'center'; ctx.font = ui.F(13, true); ctx.fillStyle = ui.accent || '#ffd35a'; ctx.fillText('STATISTIQUES', W / 2, py + 16);
+    // LED : verte = service de comptage joignable, rouge = injoignable, grise = test en cours
+    const col = etat.led === 'ok' ? '#3be26b' : etat.led === 'ko' ? '#ff4040' : '#8a8fa8';
+    const lx = px + 22, ly = py + 38, pulse = etat.led === 'attente' ? 0.5 + 0.5 * Math.sin(t * 6) : 1;
+    ctx.globalAlpha = a * 0.35 * pulse; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(lx, ly, 8, 0, 6.2832); ctx.fill();
+    ctx.globalAlpha = a; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(lx, ly, 4.5, 0, 6.2832); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.beginPath(); ctx.arc(lx - 1.4, ly - 1.4, 1.4, 0, 6.2832); ctx.fill();
+    ctx.textAlign = 'left'; ctx.font = ui.F(9.5, true); ctx.fillStyle = col;
+    ctx.fillText(etat.led === 'ok' ? 'Service de comptage : en ligne' : etat.led === 'ko' ? 'Service de comptage : injoignable' : 'Service de comptage : test…', lx + 14, ly);
+    const lignes = [['Vues totales', etat.vues], ['Visiteurs uniques', etat.uniques], ['Parties gagnées (élu·e)', etat.elu], ['Parties perdues (battu·e)', etat.battu]];
+    lignes.forEach(([lab, v], i) => {
+      const y = py + 62 + i * 16; ctx.textAlign = 'left'; ctx.font = ui.F(10.5, false); ctx.fillStyle = '#d6ccee'; ctx.fillText(lab, px + 18, y);
+      ctx.textAlign = 'right'; ctx.font = ui.F(11.5, true); ctx.fillStyle = '#ffffff'; ctx.fillText(etat.maj ? fmt(v) : '…', px + pw - 18, y);
+    });
+    ctx.textAlign = 'center'; ctx.font = ui.F(7.5, false); ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.fillText(etat.led === 'ko' && etat.maj ? 'dernières valeurs connues — compteurs anonymes' : 'compteurs anonymes, mis à jour en direct', W / 2, py + ph - 20);
+    if (t > 0.3) ctx.fillText('clic / échap pour fermer', W / 2, py + ph - 9);
+    ctx.restore();
+  }
+  const dov = UI.drawOverlay;
+  UI.drawOverlay = function (ctx, S, hero) {
+    dov.call(this, ctx, S, hero);
+    if (!etat.open) return;
+    ctx.save(); ctx.scale(S, S); try { dessiner(this, ctx); } finally { ctx.restore(); }
+  };
+})(globalThis.AK);
+
+
 /* ===== game/zz-vie.js ===== */
 // ============================================================================
 //  VIE DES PNJ — les personnages ne sont plus des statues.
