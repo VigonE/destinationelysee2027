@@ -7773,6 +7773,165 @@ AK.config({
 })(globalThis.AK);
 
 
+/* ===== game/zz-aides.js ===== */
+// ============================================================================
+//  V34 — AIDES PLUS SUBTILES (bouton « ? ») : indice indirect d'abord, indice direct ensuite
+//  Les aides de config.js restent la source de vérité (conditions et texte direct inchangés).
+//  Ici : pour chaque aide, une version ALLUSIVE (ambiance, piste, suspense) affichée au premier appui ;
+//  un second appui sur la MÊME aide (en moins de 90 s) affiche le texte direct d'origine, pour ne laisser personne bloqué.
+//  Clé = 48 premiers caractères du texte d'origine → texte allusif. Une aide sans entrée reste directe (rien ne casse).
+//  `?aides=0` : retour au comportement d'avant (toujours direct). Moteur non touché (on enrobe `AK.UI.prototype.hint`).
+// ============================================================================
+(function (AK) {
+  'use strict';
+  const K = 48;
+  const INDIRECT = {
+    "Parlez à l'un des trois candidats de la salle de": "Trois visages dans la salle de crise, trois façons de rêver l'Élysée. Il va falloir se laisser convaincre par l'un d'eux.",
+    "Au QG, Basile attend votre ligne de campagne.": "Quelqu'un au QG attend de savoir de quel bois votre campagne se chauffe.",
+    "Mme Fabre réclame le RIB de l'association de fin": "Les finances de la campagne tiennent à un bout de papier que Mme Fabre ne peut pas inventer. Et ce papier, il faut bien l'imprimer quelque part…",
+    "Utilisez la ramette de papier avec l'imprimante ": "Une feuille blanche, une machine qui ronronne dans le coin du QG… Il ne manque pas grand-chose.",
+    "Donnez le RIB à Mme Fabre, la trésorière.": "Ce que vous avez en main, Mme Fabre l'attend depuis ce matin.",
+    "Mme Fabre, la trésorière, doit savoir comment fi": "Un budget de campagne, ça se discute : la trésorière a sûrement une idée derrière la tête.",
+    "Un brouillon d'amendement traîne sur votre burea": "Un papier a l'air de traîner là où personne ne regarde, sur votre bureau. Puis un rapporteur à convaincre, ailleurs, sous les ors du Palais.",
+    "Montrez le brouillon au rapporteur général, à la": "Votre brouillon n'a de valeur que s'il passe sous le nez de celui qui tient la plume des finances publiques.",
+    "Irrecevable (article 40) : retournez au QG, util": "L'article 40 a frappé. Un chiffre, noir sur blanc, voilà ce qu'on vous réclame, et il se fabrique au QG.",
+    "Donnez la note de chiffrage au rapporteur généra": "Maintenant que vous avez les chiffres, il ne reste qu'à convaincre celui qui les réclamait.",
+    "Il manque un gage : utilisez le tableau des gage": "Toute dépense doit être compensée quelque part. Un tableau, dans votre dos, en dit long sur ce « quelque part ».",
+    "Montrez à nouveau le brouillon d'amendement au r": "Un texte chiffré et gagé… Le rapporteur serait peut-être d'un autre avis, cette fois.",
+    "Dans la revue de presse du QG, un article sur le": "Parfois, une simple coupure de presse sur les artisans dort au milieu des journaux du QG. Reste à savoir ce qu'on en fait.",
+    "Utilisez la coupure de presse avec l'ordinateur ": "Un article, un ordinateur : on a déjà vu des campagnes naître d'un clic. Et après ? Inès aime les belles histoires.",
+    "Donnez la pétition à Inès : elle la mettra en un": "Votre pétition ne servira à rien tant qu'Inès ne l'aura pas sous les yeux.",
+    "Sur le tableau de liège, une liste discrète de o": "Au milieu des affiches du QG, un papier qu'on n'afficherait pas volontiers. Onze noms, un secret de polichinelle.",
+    "Montrez la liste des usines au rapporteur généra": "Une liste, un rapporteur, une commission. Le trio gagnant est connu.",
+    "Dans l'étagère du QG, un rapport de la Cour des ": "Quelque part sur l'étagère du QG, une page cornée dit des choses que la Cour des comptes n'ose pas crier.",
+    "Donnez le rapport de la Cour des comptes au rapp": "Ce rapport à la page cornée vaudrait de l'or devant le bon interlocuteur, celui qui compte les gages.",
+    "Votre directeur de campagne attend votre consign": "Un directeur de campagne qui arpente la pièce n'attend pas votre avis sur la météo : le budget est sur la table.",
+    "À Marseille, près du camion : une caisse de gile": "À Marseille, près du camion, il y a de quoi se rendre visible… et se faire accepter.",
+    "Donnez le gilet fluo à Nadia : sur un barrage, o": "Sur un barrage, un costume sent la préfecture. Nadia vous regarderait autrement avec une tenue qu'elle reconnaît.",
+    "Prenez la voiture de campagne (porte du QG) : di": "Marseille gronde. La voiture de campagne vous attend à la porte du QG.",
+    "Le courrier du QG contient une invitation de Mat": "Un courrier d'apparat dort dans le courrier du QG. Pour entrer quelque part où l'on ne laisse pas entrer n'importe qui, il faudra plus qu'une jolie enveloppe : pensez à votre veste.",
+    "À Matignon, l'agent de sécurité veut voir l'invi": "À Matignon, la porte ne s'ouvre pas sur un sourire. Il faut montrer patte blanche, et même deux fois.",
+    "Entrez dans l'hôtel de Matignon : asseyez‑vous d": "Le Premier ministre se fait attendre. Il y a pire que d'attendre dans un fauteuil doré : on a le temps de remarquer ce qui traîne à portée de main.",
+    "Au QG, utilisez la ramette avec l'imprimante : v": "Une question au gouvernement, ça se prépare par écrit. Quelque chose doit sortir de la machine du QG avant de partir.",
+    "À l'Assemblée, dans la salle des Quatre‑Colonnes": "Au Palais Bourbon, un petit bout de tissu tricolore pend dans un vestiaire. Sans lui, pas d'entrée dans la grande salle.",
+    "Donnez la cocarde à l'huissier, puis franchissez": "L'huissier aime les signes extérieurs. Une fois qu'il est content, la grande porte s'ouvre.",
+    "Dans l'hémicycle, remettez la fiche de question ": "Dans l'hémicycle, tout se joue en quelques minutes. Votre papier doit atterrir entre de bonnes mains.",
+    "Après Matignon, le 49.3 va tomber : rejoignez vo": "Le Premier ministre a sorti l'arme que les oppositions redoutent. Votre directrice de campagne a du nouveau.",
+    "Palais Bourbon : prenez le formulaire de motion ": "Sur le pupitre des huissiers, il y a de quoi faire tomber un gouvernement. Il faut juste savoir où chercher.",
+    "Faites signer la feuille : Brun (de bon cœur), R": "Cinquante-huit signatures : autant de convictions à faire plier. À chacun son argument, et vous en avez un par signataire.",
+    "À la Bourse du travail : la ronéo attend une mat": "À la Bourse du travail, une vieille ronéo attend qu'on la nourrisse. Il lui manque trois choses, dont une à chercher du côté du QG.",
+    "À Bercy : branchez la clé USB du modèle sur l'or": "À Bercy, un simple branchement peut changer le regard d'une ministre sur vos chiffres.",
+    "Gaëtan Brun, président du groupe, vous attend à ": "La motion se joue demain. Le président du groupe est quelque part dans les couloirs de l'Assemblée, et il n'attendra pas.",
+    "Mireille vous attend à la Bourse du travail.": "Mireille ne ratera pas une occasion de vous prendre à partie. À la Bourse du travail, bien sûr.",
+    "La ministre des Comptes publics vous attend à Be": "Une ministre qui compte les sous de l'État vous attend à Bercy. Elle compte aussi les minutes.",
+    "Facultatif : au café du Commerce, trois clients ": "Un petit café, quelques clients, de petites demandes : on gagne souvent un électeur pour un chargeur.",
+    "Votre directeur de campagne vous attend au QG : ": "Le Premier ministre vient de jouer sa carte. Au QG, on a déjà le téléphone à l'oreille.",
+    "Au QG : une enquête de presse paraît ce soir. Ba": "Au QG, on parle à voix basse : un article va paraître ce soir. Basile n'a pas encore décidé de ce qu'il fallait en penser.",
+    "À la permanence : la déléguée d'un syndicat de p": "Un syndicat de police a des attentes, et la permanence est ouverte jusqu'au soir.",
+    "À l'Assemblée : un polémiste de plateau vous pro": "Un polémiste traîne à l'Assemblée avec l'envie de vous voir répondre devant caméra.",
+    "À la Maison de la gauche : l'économiste Hélène B": "Hélène Berthier fait les comptes à voix haute à la Maison de la gauche. Elle attend que quelqu'un lui réponde.",
+    "À la Bourse du travail : Dédé, le cheminot, atte": "Un cheminot parle salaires à la Bourse du travail. Il connaît la réponse aux questions qu'il pose.",
+    "À Bercy : un diplomate européen vous attend avan": "Un diplomate européen a quelques mots à vous glisser avant l'Eurogroupe. Mieux vaut l'écouter à Bercy.",
+    "À Bercy : un PDG du CAC 40 vous invite à dîner.": "Un grand patron vous invite à sa table. À Bercy, l'invitation traîne déjà.",
+    "À Marseille, près du barrage : Hubert Delorme, l": "Le patron des transporteurs observe le barrage de loin. Il a un chiffre à vous demander, et son sourire en dit long.",
+    "À Marseille : la voiture de la radio locale atte": "À Marseille, près du camion, un micro tendu. On guette votre réaction.",
+    "Chapitre 2 : barrage, Matignon, Assemblée, votre": "Le chapitre se joue entre cinq lieux. Les gens qui attendent un mot de vous ne tardent pas à le faire savoir.",
+    "Salon de l'agriculture : il y a un seau près de ": "Au Salon, une vache regarde la foule d'un air placide. Il y a un objet près de la barrière qui l'intéresse peut-être.",
+    "Utilisez le seau avec la vache : vous trairez Ma": "Marianne n'est pas contre un geste doux, pour peu qu'on s'y prenne comme il faut.",
+    "Donnez le seau de lait au photographe de presse ": "Un photographe de presse cherche l'image qui fera la une. Vous tenez peut-être de quoi la lui donner.",
+    "Facile à rater : au Salon, le stand de fromages ": "Facile à rater : sur les stands du Salon, on goûte, on offre, on repart les mains pleines. Deux stands méritent un détour.",
+    "Une éleveuse sait reconnaître un fromage vrai : ": "Colette Roux a une longue expérience des fromages vrais et des faux. Sa mine parlera pour elle.",
+    "Utilisez le camembert certifié avec la bouteille": "Un camembert, une bouteille, deux bonnes idées : l'une se marie bien à l'autre.",
+    "Au plateau télé, Sonia saura quoi faire du plate": "Sonia sait ce qu'on fait des produits de terroir quand les caméras tournent.",
+    "Le Salon de l'agriculture : Gérard Pontoise tien": "Gérard Pontoise a un carnet de parrainages. On ne l'ouvre pas pour n'importe qui.",
+    "Au plateau télévisé : la matinale vous attend. P": "La matinale approche. Quelque chose manque à la régie, et c'est justement sur la table.",
+    "Donnez le micro‑cravate à Sonia pour lancer la m": "Sonia attend le petit détail technique qui lance l'antenne.",
+    "À la permanence : formulaire de demande, tampon,": "La commissaire a la patience des fonctionnaires : il y a des papiers, un tampon, des étapes. Rien ne se fait sans.",
+    "Maison de la gauche : la caisse de solidarité es": "Une caisse cadenassée, une clé qui se cache. Où les militants dissimulent-ils ce genre de choses ? Pensez aux plantes vertes.",
+    "Utilisez la petite clé avec la caisse de solidar": "La clé trouvée, la caisse vous attend sagement.",
+    "À Bercy : un pli de la Commission européenne est": "Un pli officiel cacheté sur un bureau, un petit outil de métier à côté. La curiosité est un défaut utile.",
+    "Inès, la journaliste, vous attend au QG avec une": "Inès a une question qui pique, et elle ne la posera qu'au QG.",
+    "Mme Fabre, au QG, a reçu une offre de financemen": "Mme Fabre a l'air troublée. Une offre de financement, ça se flaire avant de se signer.",
+    "À l'Assemblée : le polémiste veut parler du plaf": "Le polémiste ne vous lâchera pas avant d'avoir parlé du plafond de verre.",
+    "À la permanence : un maire rural vous attend.": "Un maire rural ne vous demandera pas la lune, juste d'être écouté. À la permanence.",
+    "À la Maison de la gauche : l'économiste vous int": "Une économiste s'inquiète de ce que le capital choisit de faire quand on le contrarie.",
+    "À la Maison de la gauche : la militante du colle": "Au collectif climat, on guette votre réponse depuis longtemps.",
+    "À la mairie : un conseiller de l'Élysée veut vou": "Quelqu'un de l'Élysée vous cherche en mairie. Il sent le soutien comme d'autres sentent la pluie.",
+    "À Bercy : la directrice du Trésor veut connaître": "À Bercy, la directrice du Trésor a un calendrier de réformes en tête, et un regard en coin.",
+    "Au Salon de l'agriculture : Colette Roux, éleveu": "Colette Roux n'a pas besoin de s'étendre : elle attend de vous un engagement sur les prix, c'est tout.",
+    "À l'Assemblée : Étienne Rochas (Droite Républica": "Étienne Rochas a un parti, un ego et une conversation qu'il aimerait avoir.",
+    "À la permanence : Jocelyne Wattier veut savoir c": "Jocelyne Wattier pense à ses courses. Le pouvoir d'achat n'est pas un concept pour elle.",
+    "À la Bourse du travail : Hervé Gaudin attend vos": "Hervé Gaudin attend des réponses sur les fonctionnaires. Il reconnaît un discours creux à dix pas.",
+    "À la Maison de la gauche : Anaïs Perrot vous dem": "Anaïs Perrot voudrait savoir si l'on gagne seul ou à plusieurs. Chacun a son avis.",
+    "À Bercy : la ministre des Comptes publics attend": "Une ministre vous attend sur l'âge de départ. Sujet piège, certes, mais il faudra bien le traverser.",
+    "À la mairie : Maurice Valade, président d'une as": "Maurice Valade représente des maires qui comptent leurs routes, leurs écoles, leurs crédits. Il faut leur parler franchement.",
+    "Chapitre 3 : le Salon, le plateau, le QG, vos de": "Les lieux se multiplient, les voix aussi. Gardez un œil sur la jauge des parrainages : c'est elle qui décidera de la suite.",
+    "Au Conseil constitutionnel : trois présentations": "Le Conseil constitutionnel a renvoyé trois présentations. Le secrétaire général doit bien avoir de quoi vous aider à chercher les erreurs.",
+    "Le bac des présentations renvoyées est sur la ta": "Les présentations renvoyées s'entassent quelque part, loin des regards. Une table annexe, peut-être ?",
+    "Lisez la liste officielle à la loupe pour trouve": "L'erreur est dans la liste officielle, mais elle n'est pas lisible à l'œil nu. Et un document réparé a besoin d'un cachet officiel.",
+    "Remettez la présentation régularisée au secrétai": "Une présentation en règle, c'est toute la différence entre un rêve et une candidature. Le secrétaire général attend.",
+    "Le Conseil constitutionnel : le secrétaire génér": "Le secrétaire général du Conseil ne dira rien tant que vous n'aurez pas décidé de votre stratégie.",
+    "Retournez voir le secrétaire général du Conseil ": "Le décompte est fait. Le secrétaire général aime les chiffres exacts, et il y a un plafond par département.",
+    "Au QG : des hauts fonctionnaires préparent une t": "Des hauts fonctionnaires affûtent leur plume. Il vaut mieux que votre directeur de campagne sache quoi répondre.",
+    "Au Zénith : prenez le micro HF dans la loge et b": "Au Zénith, il y a une loge, un micro qui n'a pas encore trouvé sa place, et un pupitre qui n'attend que lui.",
+    "Au Zénith : la clé USB de la vidéo se branche su": "Une clé USB, une régie vidéo. Vous avez déjà vu tourner des films avec moins.",
+    "À la Commission des comptes de campagne : un aff": "Un affichage dans une commission peut intéresser un régisseur qui a peur du feu.",
+    "Donnez l'extrait du règlement au régisseur du Zé": "Le régisseur du Zénith a des questions de sécurité. Quelqu'un lui doit une réponse écrite.",
+    "Au Zénith : un flightcase contient une banderole": "Un flightcase de tournée cache une banderole faite à la main. C'est de la ferveur militante, pliée avec soin.",
+    "Utilisez la banderole avec le pupitre de scène.": "La banderole est faite pour la scène, pas pour rester dans sa caisse.",
+    "Dans les classeurs de la Commission des comptes ": "Un concurrent a proposé un meilleur prix pour la sono. Il suffit de savoir où chercher dans la commission.",
+    "Donnez le devis concurrent au régisseur du Zénit": "Un devis plus avantageux fait toujours son effet sur un régisseur qui compte.",
+    "Au Zénith : les fiches du discours se posent sur": "Des fiches de discours sans pupitre, c'est de la prose sans public. Au Zénith, il y a justement un endroit pour elles.",
+    "Comptes de campagne : trois factures à retrouver": "Trois factures dorment quelque part : un tiroir, des coulisses, un stand. Une trésorière devra y apposer son regard.",
+    "Portez le classeur à la Commission des comptes d": "Un classeur, c'est bien. Mais le rapporteur n'en croira pas ses yeux tant qu'il ne l'aura pas eu en main, à la commission.",
+    "La certification manque : le cachet est dans l’a": "Une certification, ça se garde sous clé. Le code est affiché au mur, comme une date fondatrice qu'on n'oublie pas.",
+    "Utilisez le cachet avec le classeur, puis remett": "Un cachet dans une main, un classeur dans l'autre. L'un est fait pour l'autre.",
+    "Remettez le classeur certifié conforme à M. Delm": "Le rapporteur de la commission des comptes attend un classeur en règle. Tout est enfin en ordre.",
+    "Le régisseur du Zénith lance le meeting quand le": "Le régisseur du Zénith lance le meeting quand tout est prêt : le son, l'image, les mots.",
+    "À la permanence : le maire rural attend votre po": "Un maire rural s'impatiente à la permanence : les ZFE, ça le concerne de près.",
+    "À la permanence : le commissaire vous attend : u": "Un commissaire a l'air préoccupé. Le fait divers tourne en boucle sur les chaînes, et on vous attend au tournant.",
+    "À la Bourse du travail : le cheminot vous prévie": "Un cheminot vous parle d'une grève qui tombe très mal. À la Bourse du travail, on prépare l'avenir.",
+    "À la Maison de la gauche : la militante attend v": "Une militante attend de vous un plan sérieux pour les services publics. Maison de la gauche.",
+    "À Bercy : la directrice du Trésor attend votre p": "La directrice du Trésor tient à connaître votre position sur les grands corps. À Bercy, évidemment.",
+    "À Bercy : le diplomate vous alerte sur l'écart d": "Un diplomate vous parle d'un écart de taux avec l'Allemagne. Ça a l'air technique. Ça l'est aussi, mais pas seulement.",
+    "À la permanence : Roger Delmas, un retraité à ca": "Un retraité à casquette a une opinion sur l'immigration et le dira volontiers. À la permanence.",
+    "À la Maison de la gauche : Samir Haddad, militan": "Un militant de quartier attend de vous des engagements sur la police et la justice. Il a l'œil sur vos réponses.",
+    "À la mairie : Aurélien Vasseur (Renouveau) veut ": "Aurélien Vasseur voudrait savoir si vous marchez seul. À la mairie, le Renouveau attend.",
+    "Chapitre 4 : le dernier lieu de campagne de votr": "Dernier lieu, dernière ligne droite : les parrainages sont la clé. Il en faut 500.",
+    "Avant le débat : un poudrier traîne près de la c": "Un visage qui brille passe mal à la télé. Quelque chose traîne du côté de la coiffeuse du plateau.",
+    "Utilisez la poudre avec la coiffeuse : un coup d": "Une poudre, une coiffeuse : un dernier coup de main avant le direct.",
+    "Prenez la voiture : direction le plateau télévis": "Le débat approche, la voiture vous attend. Sonia sait ce qui se passe quand les caméras s'allument.",
+    "Dimanche : allez voter. Au bureau de vote, l’ass": "Dimanche, le bureau de vote. L'assesseure ne vous connaît pas par cœur. Vous avez de quoi la rassurer.",
+    "Signez le registre d’émargement avec le stylo de": "Ici, on signe avant de voter. Un stylo traîne sur la table. Il faudra aussi de quoi glisser votre choix.",
+    "Bulletin + enveloppe dans l’isoloir, puis l’enve": "L'isoloir, l'enveloppe, l'urne : trois étapes, dans l'ordre.",
+    "Qualifié : reparlez à Sonia pour le face‑à‑face ": "Vous êtes qualifié. Sonia a une idée de la suite et ne tardera pas à vous la dire.",
+    "Répondez, soupesez, regardez vos jauges (sondage": "Vous avez des jauges, des interlocuteurs, des objets. Pas de bonne réponse, seulement des conséquences.",
+  };
+  // texte à afficher pour l'aide `h` à son n-ième appui consécutif (pur, testé hors navigateur)
+  AK.aideTexte = function (h, n) {
+    const direct = h && h.say; if (!direct) return null;
+    if (n >= 2) return direct;
+    return INDIRECT[direct.slice(0, K)] || direct;
+  };
+  AK.AIDES = INDIRECT; AK.AIDES_K = K;
+
+  if (!AK.UI || !AK.UI.prototype || typeof window === 'undefined') return;
+  const off = (() => { try { return new URLSearchParams(location.search).get('aides') === '0'; } catch (e) { return false; } })();
+  if (off) return;
+  let dernier = null, n = 0, t0 = 0;
+  AK.UI.prototype.hint = async function () {
+    const g = this.game; if (!g || g.phase !== 'idle' || g.ended) return;
+    const hs = (this.cfg && this.cfg.hints) || []; const h = hs.find((e) => g.cond(e.if)); if (!h) return;
+    const now = Date.now();
+    if (h === dernier && now - t0 < 90000) n++; else { dernier = h; n = 1; }
+    t0 = now;
+    const say = h.then ? null : AK.aideTexte(h, n);
+    g.phase = 'script';
+    try { await g.run(say ? [{ say }] : (h.then || [{ say: h.say }])); } catch (e) { console.error(e); } finally { g.phase = 'idle'; }
+  };
+})(globalThis.AK);
+
+
 /* ===== game/zz-finesse.js ===== */
 // ============================================================================
 //  V31 — PASSE DE FINESSE (décors + personnages) — aucun code moteur : on enrobe des méthodes du SceneRenderer.
