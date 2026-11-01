@@ -10903,7 +10903,7 @@ AK.item({ id: 'rapport_cdc', name: 'rapport de la Cour des comptes', icon: 'book
     // l'écran de choix verrouille la partie (phase « script ») : sinon un clic dans la salle lance une 2e action en parallèle, qui reste bloquée
     const g = api.game; const avant = g.phase; g.phase = 'script';
     const h = a && a.h && FICHES[a.h] ? a.h : null;
-    try { await api.run([{ dialogue: h ? 'choix_' + h : 'ecran_choix' }]); } finally { ouvert = false; if (avant !== 'script') g.phase = 'idle'; }
+    try { await api.run([{ dialogue: h ? 'choix_' + h : 'ecran_choix' }]); } finally { ouvert = false; g.phase = 'idle'; }   // V41 : toujours libérer (un clic sur un candidat pendant l'écran de lancement laissait « script » : QG figé)
   });
    // ouverture automatique : seulement avec l'écran (pas en mode « sans écran »)
 })();
@@ -11377,9 +11377,9 @@ AK.parler('photographe', {
       { id: 'horloge', name: 'Horloge', circle: [160, 130, 9], far: true, desc: ['J‑152 avant le premier tour du 18 avril 2027. Le temps, en politique, n\'est pas élastique.'] },
     ],
     npcs: [
-      { id: 'c_marion', char: 'marion', name: 'Marion Castelle', x: 205, y: 232, dir: 'r', on: { talk: [{ call: 'ouvrirChoix', args: { h: 'marion' } }], look: ['Marion Castelle (fictive), Ralliement Souverain. Une fermeté étudiée, un tailleur marine.'] } },
-      { id: 'c_leon', char: 'leon', name: 'Léon Marteau', x: 320, y: 240, dir: 'f', on: { talk: [{ call: 'ouvrirChoix', args: { h: 'leon' } }], look: ['Léon Marteau (fictif), Gauche Debout. Le poing facile, la formule rapide.'] } },
-      { id: 'c_bernard', char: 'bernard', name: 'Bernard Lamy', x: 480, y: 232, dir: 'l', on: { talk: [{ call: 'ouvrirChoix', args: { h: 'bernard' } }], look: ['Bernard Lamy (fictif), Cap Central. Un costume sans pli, une promesse sans éclat.'] } },
+      { id: 'c_marion', char: 'marion', name: 'Marion Castelle', x: 205, y: 232, dir: 'r', on: { talk: [{ call: 'ouvrirChoix', args: { h: 'marion' } }], look: ['Marion Castelle (fictive), Ralliement Souverain. Une fermeté étudiée, un tailleur marine.', { call: 'ouvrirChoix', args: { h: 'marion' } }] } },
+      { id: 'c_leon', char: 'leon', name: 'Léon Marteau', x: 320, y: 240, dir: 'f', on: { talk: [{ call: 'ouvrirChoix', args: { h: 'leon' } }], look: ['Léon Marteau (fictif), Gauche Debout. Le poing facile, la formule rapide.', { call: 'ouvrirChoix', args: { h: 'leon' } }] } },
+      { id: 'c_bernard', char: 'bernard', name: 'Bernard Lamy', x: 480, y: 232, dir: 'l', on: { talk: [{ call: 'ouvrirChoix', args: { h: 'bernard' } }], look: ['Bernard Lamy (fictif), Cap Central. Un costume sans pli, une promesse sans éclat.', { call: 'ouvrirChoix', args: { h: 'bernard' } }] } },
     ],
   });
 })();
