@@ -8284,6 +8284,7 @@ AK.config({
 //  V15 : « scène plein écran » — plus de panneau permanent : la scène occupe tout l'écran ; un toucher exécute l'action logique (regarder, parler,
 //  prendre…), un APPUI LONG sur un objet ou un personnage ouvre le menu des verbes ; l'inventaire est un sac à dos (bouton en bas à gauche) ;
 //  les zones tactiles sont élargies (aimantation à l'objet le plus proche) ; les choix de dialogue passent à la ligne, en plus gros, avec défilement.
+//  V33 : un PC Windows/Mac/Linux tactile (Surface…) reste en mode ORDINATEUR ; seuls Android, iPhone et iPad prennent la mise en page tactile.
 //  Réglages d'URL : ?mobile=1 force le mode téléphone (test sur ordinateur) · ?mobile=0 le désactive.
 // ============================================================================
 (function (AK) {
@@ -8291,8 +8292,20 @@ AK.config({
   if (typeof window === 'undefined' || typeof document === 'undefined' || !AK.layout) return;
   const qs = (() => { try { return new URLSearchParams(location.search).get('mobile'); } catch (e) { return null; } })();
   const mq = (q) => { try { return window.matchMedia(q).matches; } catch (e) { return false; } };
+  // V33 : un PC Windows / Mac / Linux à écran tactile (Surface, portables 2-en-1…) reste en mode ORDINATEUR.
+  //       Seuls Android, iPhone et iPad (y compris iPadOS « Macintosh ») prennent la mise en page tactile.
+  const pcDesktop = (() => {
+    try {
+      const ua = navigator.userAgent || '';
+      const ipad = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+      if (/Android/.test(ua) || ipad) return false;
+      const d = navigator.userAgentData; if (d && d.mobile === true) return false;
+      return /Windows|Macintosh|X11|CrOS|Linux/.test(ua);
+    } catch (e) { return false; }
+  })();
   const phone = () => {
     if (qs === '0') return false; if (qs === '1') return true;
+    if (pcDesktop) return false;
     let small = false; try { small = Math.min(screen.width, screen.height) <= 1200; } catch (e) { /* ignoré */ }   // V26 : tablettes incluses (≤ 1200 px de petit côté)
     return mq('(pointer: coarse)') && small;
   };
