@@ -9894,6 +9894,83 @@ AK.config({
 })(globalThis.AK);
 
 
+/* ===== game/zz-resolution.js ===== */
+// ============================================================================
+//  V38 — NETTETÉ STABLE APRÈS UN CHANGEMENT DE RÉSOLUTION (rendu seul, moteur intact).
+//  Symptômes : après un passage plein écran, un zoom, un changement d'écran ou de densité de pixels, l'image
+//  devenait pixelisée jusqu'au rechargement. Deux causes :
+//   1. le moteur n'écoute que « resize » : un changement de densité (devicePixelRatio) ou un plein écran dont la
+//      taille arrive en retard laissait le canvas à l'ancienne taille (étiré = flou/pixels) ;
+//   2. la qualité adaptative baissait d'un cran (jusqu'au demi‑résolution) à cause du ralenti du changement
+//      lui‑même, puis ne remontait JAMAIS.
+//  Ici : re-mesure à chaque changement (resize, densité, plein écran, orientation, viewport visuel, + garde en
+//  boucle), qualité remise au niveau d'origine, 3 s de grâce contre les faux ralentis, et remontée automatique
+//  de la qualité quand la machine tient le rythme. Choix manuel « Qualité » du menu respecté. `?res=0` désactive.
+// ============================================================================
+(function (AK) {
+  'use strict';
+  AK.RESOLUTION_V38 = true;
+  if (typeof window === 'undefined' || !AK.Runtime) return;
+  try { if (/[?&]res=0(&|$)/.test(location.search || '')) return; } catch (e) { /* ignoré */ }
+  const RP = AK.Runtime.prototype, f0 = RP.frame;
+  const GRACE = 3000;
+  let seen = null, wait = 8, lastUp = -1e9, good = 0, armed = false;
+
+  const sig = () => window.innerWidth + 'x' + window.innerHeight + '@' + (window.devicePixelRatio || 1) + (document.fullscreenElement ? 'F' : '');
+  function refresh(rt, why) {
+    try {
+      rt._grace = performance.now() + GRACE; rt.acc = 0; rt.n = 0; rt.slow = 0; good = 0;
+      rt.resize(); seen = sig();
+      if (!rt.pixelLocked && rt._p0 && rt.renderer.p !== rt._p0) rt.renderer.setPixel(rt._p0);   // qualité d'origine
+    } catch (e) { /* rendu seulement */ }
+  }
+  const later = (rt, why) => { refresh(rt, why); setTimeout(() => refresh(rt, why), 250); setTimeout(() => refresh(rt, why), 900); };
+
+  function arm(rt) {
+    if (armed) return; armed = true;
+    const go = (why) => () => later(rt, why);
+    window.addEventListener('resize', go('resize'));
+    window.addEventListener('orientationchange', go('orient'));
+    document.addEventListener('fullscreenchange', go('fs'));
+    document.addEventListener('webkitfullscreenchange', go('fs'));
+    try { if (window.visualViewport) window.visualViewport.addEventListener('resize', go('vv')); } catch (e) { /* ignoré */ }
+    // la densité de pixels ne déclenche pas « resize » : on écoute la requête média, qu'on ré‑arme à chaque changement
+    const watchDpr = () => {
+      try {
+        const mq = window.matchMedia('(resolution: ' + (window.devicePixelRatio || 1) + 'dppx)');
+        const on = () => { later(rt, 'dpr'); watchDpr(); };
+        if (mq.addEventListener) mq.addEventListener('change', on, { once: true }); else if (mq.addListener) mq.addListener(on);
+      } catch (e) { /* ignoré */ }
+    };
+    watchDpr();
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) later(rt, 'visible'); });
+  }
+
+  RP.frame = function (now) {
+    const rt = this;
+    if (!rt._p0) rt._p0 = rt.renderer.p;
+    if (!armed) { arm(rt); seen = sig(); }
+    // garde : si la fenêtre a changé sans qu'aucun évènement ne soit arrivé, on re-mesure
+    if (sig() !== seen && !(rt._grace > now)) refresh(rt, 'poll');
+    const before = rt.renderer.p, dt = Math.min(0.2, (now - (rt.last || now)) / 1000 || 0.016);
+    const r = f0.call(rt, now);
+    try {
+      if (rt._grace > now) { rt.acc = 0; rt.n = 0; rt.slow = 0; good = 0; }
+      else if (!rt.pixelLocked) {
+        if (rt.renderer.p > before) {                                   // le moteur vient de dégrader
+          if (now - lastUp < 40000) wait = Math.min(180, wait * 2);     // on venait de remonter : on patiente plus longtemps
+          good = 0;
+        } else if (rt.renderer.p > rt._p0) {
+          good = dt < 0.026 ? good + dt : Math.max(0, good - 0.5);
+          if (good >= wait) { rt.renderer.setPixel(rt.renderer.p > 1 ? 1 : rt._p0); good = 0; lastUp = now; rt.acc = 0; rt.n = 0; rt.slow = 0; }
+        }
+      }
+    } catch (e) { /* rendu seulement */ }
+    return r;
+  };
+})(globalThis.AK);
+
+
 /* ===== game/zz-stats.js ===== */
 // ============================================================================
 //  V28 — STATISTIQUES LÉGÈRES (vues, visiteurs uniques, fins) — extension côté jeu, le moteur n'est PAS modifié.
