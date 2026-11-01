@@ -8769,6 +8769,326 @@ AK.config({
 })(globalThis.AK);
 
 
+/* ===== game/zz-partitions.js ===== */
+// ============================================================================
+//  V36 — BANDE ORIGINALE « façon iMUSE / MIDI » (Monkey Island, Day of the Tentacle) : partitions + synthèse.
+//  • 18 thèmes originaux composés note à note (aucun fichier audio) : un par lieu, un par candidat (QG), et des
+//    leitmotivs de personnages (le Premier ministre, Mme Fabre, Inès) qui prennent le relais pendant leurs dialogues.
+//  • Orchestre « General MIDI / MT‑32 » synthétisé : steel‑drum, marimba, vibraphone, célesta, orgue, piano électrique,
+//    guitare (Karplus‑Strong), clavecin, pizzicati, cordes, flûte, clarinette, basson, cuivres (ouverts/sourdine),
+//    accordéon musette, contrebasse, tuba, basse synthé, timbales, batterie complète ; réverbération de salle, stéréo.
+//  • Accompagnements générés par style (reggae, marche, pompe manouche, bossa, menuet, valse musette, country,
+//    rock de lutte, funk télé, hymne, chanson, swing, boîte à musique, sarabande) ; mélodies écrites à la main.
+//  • Anti‑répétition : à chaque tour de boucle, l'instrument soliste change, les breaks de batterie varient,
+//    légère humanisation (attaque, nuance). Fondus enchaînés entre lieux, retour au thème du lieu après un dialogue.
+//  Données seules + enrobages : le moteur n'est pas modifié, les scènes non plus (table lieu → thème ci‑dessous).
+//  Le menu « Musique : oui/non » reste la commande du joueur (son choix est mémorisé) ; `?musique=0` coupe.
+// ============================================================================
+(function (AK) {
+  'use strict';
+
+  // --------------------------------------------------------------- écriture
+  const PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+  const N = (nm) => { const m = /^([A-G])([#b]?)(-?\d)$/.exec(nm); if (!m) return null; return 12 * (Number(m[3]) + 1) + PC[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0); };
+  const mel = (i, str, at = 0, v = 1, o = {}) => { const out = []; let t = at; for (const tok of str.trim().split(/\s+/)) { const [n, d] = tok.split(':'); const du = Number(d || 1); if (n !== '-') out.push(Object.assign({ t, n: N(n), d: du, i, v }, o)); t += du; } return out; };
+  const Q = { '': [0, 4, 7], m: [0, 3, 7], 7: [0, 4, 7, 10], m7: [0, 3, 7, 10], maj7: [0, 4, 7, 11], m6: [0, 3, 7, 9], 6: [0, 4, 7, 9], dim: [0, 3, 6], m7b5: [0, 3, 6, 10], sus4: [0, 5, 7], '7sus4': [0, 5, 7, 10], 9: [0, 4, 7, 10, 14] };
+  const chordOf = (s) => { const m = /^([A-G][#b]?)(.*)$/.exec(s); const r = PC[m[1][0]] + (m[1][1] === '#' ? 1 : m[1][1] === 'b' ? -1 : 0); return { r: (r + 12) % 12, iv: Q[m[2]] || Q[''], q: m[2] }; };
+  const inR = (n, lo, hi) => { while (n < lo) n += 12; while (n >= hi) n -= 12; return n; };
+  const voicing = (ch, lo = 55, hi = 68) => ch.iv.slice(0, 4).map((iv) => inR(48 + ch.r + iv, lo, hi)).sort((a, b) => a - b);
+  const bassN = (pc, lo = 31) => inR(36 + pc, lo, lo + 12);
+  // progression : 'Gm Gm Eb F' (une mesure chacun) ; 'D7sus4:2 D7:2' → deux accords dans la mesure (durées en temps)
+  function bars(prog, meter) {
+    const out = []; let b = 0;
+    for (const bar of prog.split('|')) { const parts = bar.trim().split(/\s+/).filter(Boolean); if (!parts.length) continue; let t = 0; const per = meter / parts.length; for (const p of parts) { const [c, d] = p.split(':'); const du = d ? Number(d) : per; out.push({ bar: b, t: b * meter + t, d: du, ch: chordOf(c) }); t += du; } b++; }
+    return { list: out, n: b };
+  }
+
+  // --------------------------------------------------------------- accompagnements par style
+  const E = (t, i, n, d, v = 1, o) => Object.assign({ t, i, n, d, v }, o || {});
+  const STY = {
+    reggae(c, m, k, nb) { const b = bassN(c.ch.r), f = b + 7, out = [];
+      if (c.d >= 4) out.push(E(c.t, 'bass', b, 0.9, 1), E(c.t + 1.5, 'bass', b, 0.4, 0.7), E(c.t + 2, 'bass', f, 0.5, 0.85), E(c.t + 2.5, 'bass', b + 12, 0.4, 0.7), E(c.t + 3.5, 'bass', b + (c.ch.iv[1]), 0.4, 0.75));
+      else out.push(E(c.t, 'bass', b, c.d * 0.8, 1));
+      for (let x = 0.5; x < c.d; x += 1) out.push(...voicing(c.ch, 60, 74).map((n) => E(c.t + x, 'organ', n, 0.28, 0.45)));
+      for (let x = 1; x < c.d; x += 2) out.push(...voicing(c.ch, 55, 67).map((n) => E(c.t + x, 'guitar', n, 0.2, 0.32)));
+      return out; },
+    drumsReggae(bar, m, last) { const t = bar * m, o = [E(t + 2, 'kick', 0, 0.2, 1), E(t + 2, 'rim', 0, 0.1, 0.8)]; for (let x = 0; x < 4; x += 0.5) o.push(E(t + x, 'hat', 0, 0.05, x % 1 ? 0.5 : 0.8)); if (last) o.push(E(t + 3, 'tom', 50, 0.2, 0.7), E(t + 3.5, 'tom', 45, 0.2, 0.8)); else o.push(E(t + 3.5, 'shaker', 0, 0.1, 0.4)); return o; },
+    march(c, m) { const b = bassN(c.ch.r, 29), out = []; for (let x = 0; x < c.d; x += 2) out.push(E(c.t + x, 'tuba', x % 4 ? b + 7 : b, 0.8, 0.9)); for (let x = 1; x < c.d; x += 2) out.push(...voicing(c.ch, 58, 70).map((n) => E(c.t + x, 'brass', n, 0.45, 0.32))); return out; },
+    drumsMarch(bar, m, last) { const t = bar * m, o = [E(t, 'kick', 0, 0.2, 0.8), E(t + 2, 'kick', 0, 0.2, 0.7)]; for (const x of [1, 3]) o.push(E(t + x, 'snare', 0, 0.1, 0.7)); o.push(E(t + 3.5, 'snare', 0, 0.1, 0.35), E(t + 3.75, 'snare', 0, 0.1, 0.45)); if (last) for (let x = 2; x < 4; x += 0.25) o.push(E(t + x, 'snare', 0, 0.1, 0.3 + (x - 2) * 0.25)); if (bar % 8 === 0) o.push(E(t, 'crash', 0, 1, 0.5)); return o; },
+    pompe(c, m) { const b = bassN(c.ch.r, 33), out = []; for (let x = 0; x < c.d; x += 2) out.push(E(c.t + x, 'bass', x % 4 ? b + 7 : b, 0.9, 0.9)); for (let x = 0; x < c.d; x += 1) out.push(...voicing(c.ch, 55, 67).map((n) => E(c.t + x, 'guitar', n, 0.18, x % 2 ? 0.5 : 0.22))); return out; },
+    drumsPompe(bar, m) { const t = bar * m; return [E(t + 1, 'brush', 0, 0.1, 0.7), E(t + 3, 'brush', 0, 0.1, 0.7), E(t + 2.5, 'brush', 0, 0.1, 0.3)]; },
+    bossa(c, m) { const b = bassN(c.ch.r), out = []; if (c.d >= 4) out.push(E(c.t, 'bass', b, 1.4, 0.9), E(c.t + 1.5, 'bass', b + 7, 0.4, 0.7), E(c.t + 2, 'bass', b + 7, 1.4, 0.8), E(c.t + 3.5, 'bass', b, 0.4, 0.6)); else out.push(E(c.t, 'bass', b, 1.4, 0.9), E(c.t + 1.5, 'bass', b + 7, 0.4, 0.7));
+      for (const x of [0, 1.5, 2.5, 3]) if (x < c.d) out.push(...voicing(c.ch, 57, 70).map((n) => E(c.t + x, 'guitar', n, 0.4, 0.38))); return out; },
+    drumsBossa(bar, m) { const t = bar * m, o = []; const cl = bar % 2 ? [1, 2.5] : [0, 1.5, 3]; for (const x of cl) o.push(E(t + x, 'rim', 0, 0.1, 0.55)); for (let x = 0; x < 4; x += 0.5) o.push(E(t + x, 'shaker', 0, 0.1, x % 1 ? 0.35 : 0.5)); o.push(E(t, 'kick', 0, 0.2, 0.45), E(t + 2, 'kick', 0, 0.2, 0.35)); return o; },
+    minuet(c, m) { const b = bassN(c.ch.r, 36), out = [E(c.t, 'pizz', b, 0.9, 0.9), E(c.t + 2, 'pizz', b + 7, 0.9, 0.7)]; const v = voicing(c.ch, 55, 67); const pat = [v[0], v[2] || v[1], v[1], v[2] || v[1]];
+      pat.forEach((n, j) => out.push(E(c.t + 1 + j * 0.5, 'harpsi', n, 0.5, 0.42))); out.push(...v.map((n) => E(c.t, 'strings', n, c.d, 0.18))); return out; },
+    waltz(c, m, k) { const b = bassN(c.ch.r, 33), out = [E(c.t, 'bass', (k % 2 ? b + 7 : b), 0.8, 0.95)]; for (const x of [1, 2]) out.push(...voicing(c.ch, 57, 69).map((n) => E(c.t + x, 'pah', n, 0.45, 0.6))); return out; },
+    drumsWaltz(bar, m) { const t = bar * m; return [E(t, 'kick', 0, 0.2, 0.35), E(t + 1, 'brush', 0, 0.1, 0.5), E(t + 2, 'brush', 0, 0.1, 0.5)]; },
+    country(c, m, k) { const b = bassN(c.ch.r, 31), out = []; for (let x = 0; x < c.d; x += 2) out.push(E(c.t + x, 'bass', ((k + x / 2) % 2) ? b + 7 : b, 0.8, 0.9)); for (let x = 1; x < c.d; x += 2) out.push(...voicing(c.ch, 57, 69).map((n) => E(c.t + x, 'pah', n, 0.35, 0.5)), ...voicing(c.ch, 55, 67).map((n) => E(c.t + x + 0.5, 'guitar', n, 0.2, 0.25))); return out; },
+    drumsCountry(bar, m, last) { const t = bar * m, o = [E(t, 'kick', 0, 0.2, 0.6), E(t + 2, 'kick', 0, 0.2, 0.55), E(t + 1, 'brush', 0, 0.1, 0.8), E(t + 3, 'brush', 0, 0.1, 0.8)]; for (let x = 0; x < 4; x += 0.5) o.push(E(t + x, 'tamb', 0, 0.05, x % 1 ? 0.25 : 0.4)); if (last) o.push(E(t + 3.5, 'snare', 0, 0.1, 0.5)); return o; },
+    rock(c, m) { const b = bassN(c.ch.r, 28), out = []; for (let x = 0; x < c.d; x += 0.5) out.push(E(c.t + x, 'bass', b, 0.4, x % 1 ? 0.65 : 0.9)); const v = [inR(48 + c.ch.r, 52, 64), inR(48 + c.ch.r + 7, 57, 69)]; out.push(...v.map((n) => E(c.t, 'brass', n, 0.8, 0.4)), ...v.map((n) => E(c.t + 1.5, 'brass', n, 0.4, 0.32))); return out; },
+    drumsRock(bar, m, last) { const t = bar * m, o = [E(t, 'kick', 0, 0.2, 0.9), E(t + 2, 'kick', 0, 0.2, 0.8), E(t + 2.5, 'kick', 0, 0.2, 0.6), E(t + 1, 'snare', 0, 0.1, 0.8), E(t + 3, 'snare', 0, 0.1, 0.85)]; for (let x = 0; x < 4; x += 0.5) o.push(E(t + x, 'hat', 0, 0.05, x % 1 ? 0.35 : 0.6)); if (last) o.push(E(t + 3.25, 'tom', 52, 0.2, 0.7), E(t + 3.5, 'tom', 47, 0.2, 0.75), E(t + 3.75, 'tom', 43, 0.2, 0.8)); if (bar % 8 === 0) o.push(E(t, 'crash', 0, 1, 0.45)); return o; },
+    funk(c, m) { const b = bassN(c.ch.r, 28), out = []; const pat = [[0, 0, 1], [0.75, 0, 0.7], [1.5, 12, 0.8], [2, 0, 0.9], [2.75, 10, 0.7], [3.25, 7, 0.6], [3.5, 12, 0.75]]; for (const [x, s, v] of pat) if (x < c.d) out.push(E(c.t + x, 'synbass', b + s, 0.22, v));
+      for (const x of [0.5, 1.75, 2.5]) if (x < c.d) out.push(...voicing(c.ch, 58, 72).map((n) => E(c.t + x, 'epiano', n, 0.22, 0.4))); return out; },
+    drumsFunk(bar, m, last) { const t = bar * m, o = [E(t, 'kick', 0, 0.2, 0.9), E(t + 1.75, 'kick', 0, 0.2, 0.6), E(t + 2.5, 'kick', 0, 0.2, 0.75), E(t + 1, 'snare', 0, 0.1, 0.8), E(t + 3, 'snare', 0, 0.1, 0.85), E(t + 3.75, 'snare', 0, 0.1, 0.25)]; for (let x = 0; x < 4; x += 0.25) o.push(E(t + x, 'hat', 0, 0.05, (x * 4) % 2 ? 0.22 : 0.42)); if (last) o.push(E(t + 3.5, 'hato', 0, 0.2, 0.4)); return o; },
+    anthem(c, m) { const b = bassN(c.ch.r, 31), out = [E(c.t, 'bass', b, c.d * 0.95, 0.9)]; out.push(...voicing(c.ch, 55, 70).map((n) => E(c.t, 'strings', n, c.d, 0.3))); for (let x = 0; x < c.d; x += 1) out.push(...voicing(c.ch, 60, 72).slice(0, 3).map((n) => E(c.t + x + 0.5, 'brass', n, 0.3, 0.18))); return out; },
+    drumsAnthem(bar, m, last) { const t = bar * m, o = [E(t, 'kick', 0, 0.2, 1), E(t + 2, 'kick', 0, 0.2, 0.85), E(t + 1, 'snare', 0, 0.1, 0.75), E(t + 3, 'snare', 0, 0.1, 0.8), E(t, 'timp', 31 + 12, 1, 0.6)]; for (let x = 0; x < 4; x += 1) o.push(E(t + x + 0.5, 'hat', 0, 0.05, 0.3)); if (last) for (let x = 2; x < 4; x += 0.25) o.push(E(t + x, 'tom', 50 - (x - 2) * 4, 0.2, 0.5 + (x - 2) * 0.2)); if (bar % 4 === 0) o.push(E(t, 'crash', 0, 1.6, 0.5)); return o; },
+    chanson(c, m) { const b = bassN(c.ch.r, 33), out = [E(c.t, 'bass', b, 1.8, 0.8), E(c.t + 2, 'bass', b + 7, 1.8, 0.65)]; const v = voicing(c.ch, 50, 64); const arp = [v[0] - 12 + 12, v[1], v[2] || v[1] + 5, v[1], (v[2] || v[1]) + 5 > 70 ? v[0] : v[0] + 12, v[1], v[2] || v[1], v[1]];
+      arp.forEach((n, j) => { if (j * 0.5 < c.d) out.push(E(c.t + j * 0.5, 'guitar', n, Math.min(0.9, c.d - j * 0.5), j % 2 ? 0.32 : 0.45)); }); out.push(...voicing(c.ch, 57, 70).map((n) => E(c.t, 'accordeon', n, c.d * 0.95, 0.16))); return out; },
+    drumsChanson(bar, m) { const t = bar * m; return [E(t + 1, 'brush', 0, 0.1, 0.45), E(t + 3, 'brush', 0, 0.1, 0.5)]; },
+    swing(c, m, k, nb, next) { const b = bassN(c.ch.r, 31), out = []; const steps = c.d >= 4 ? 4 : 2; const tgt = next ? bassN(next.ch.r, 31) : b;
+      const walk = steps === 4 ? [b, b + c.ch.iv[1], b + 7, tgt + (tgt > b + 7 ? -1 : 1)] : [b, b + 7 === tgt ? b + c.ch.iv[1] : tgt - 1];
+      walk.forEach((n, j) => out.push(E(c.t + j, 'bass', n, 0.9, j ? 0.75 : 0.95))); for (const x of [0, 1.5]) if (x < c.d) out.push(...voicing(c.ch, 57, 70).map((n) => E(c.t + x, 'epiano', n, x ? 0.4 : 0.8, 0.3))); return out; },
+    drumsSwing(bar, m) { const t = bar * m; return [E(t, 'ride', 0, 0.3, 0.55), E(t + 1, 'ride', 0, 0.3, 0.6), E(t + 1.5, 'ride', 0, 0.2, 0.35), E(t + 2, 'ride', 0, 0.3, 0.55), E(t + 3, 'ride', 0, 0.3, 0.6), E(t + 3.5, 'ride', 0, 0.2, 0.35), E(t + 1, 'hatp', 0, 0.05, 0.35), E(t + 3, 'hatp', 0, 0.05, 0.35)]; },
+    musicbox(c, m) { const b = bassN(c.ch.r, 36), out = [E(c.t, 'pizz', b, 0.8, 0.8)]; const v = voicing(c.ch, 67, 80); for (const x of [1, 2]) out.push(...v.slice(0, 3).map((n) => E(c.t + x, 'celesta', n, 0.4, 0.22))); return out; },
+    sarabande(c, m) { const b = bassN(c.ch.r, 31), out = [E(c.t, 'bass', b, c.d, 0.6), E(c.t, 'organ', b + 12, c.d * 0.95, 0.35)]; out.push(...voicing(c.ch, 55, 70).map((n) => E(c.t, 'strings', n, c.d, 0.28))); return out; },
+    drumsSarabande(bar, m) { const t = bar * m; return bar % 4 === 0 ? [E(t, 'timp', 39, 1.5, 0.7), E(t + 2, 'timp', 39, 0.6, 0.35)] : []; },
+  };
+
+  // --------------------------------------------------------------- partitions
+  // Chaque thème : bpm, meter, swing, prog, style (+ drums), mélodies ; `alt` = instrument de remplacement un tour sur deux.
+  const T = {};
+  // Thème principal (salle de crise / coulisses) — calypso reggae, sol mineur : steel‑drum, puis marimba + flûte.
+  T.titre = { bpm: 104, meter: 4, prog: 'Gm|Gm|Eb|F|Gm|Gm|Cm|D7|Eb|F|Dm|Gm|Eb|F|D7sus4:2 D7:2|Gm', style: 'reggae', drums: 'drumsReggae', mix: { organ: 0.8 },
+    mel: [...mel('steel', 'D5:1.5 Bb4:0.5 G4:1 A4:0.5 Bb4:0.5 C5:1 Bb4:0.5 A4:0.5 G4:2 G5:1.5 F5:0.5 Eb5:1 D5:0.5 C5:0.5 D5:1 C5:0.5 Bb4:0.5 A4:2 D5:1.5 Bb4:0.5 G4:1 A4:0.5 Bb4:0.5 C5:0.5 D5:0.5 Eb5:0.5 F5:0.5 G5:2 Ab5:1 G5:0.5 F5:0.5 Eb5:1 D5:0.5 C5:0.5 D5:3 -:1', 0, 1, { alt: 'marimba' }),
+      ...mel('marimba', 'G5:0.5 F5:0.5 Eb5:1 Bb4:1 Eb5:1 F5:0.5 Eb5:0.5 D5:1 C5:2 D5:0.5 C5:0.5 A4:1 F4:1 A4:1 Bb4:1 A4:0.5 G4:0.5 D5:2 G5:0.5 F5:0.5 Eb5:1 Bb4:1 G5:1 A5:0.5 G5:0.5 F5:1 C5:2 D5:1 Eb5:0.5 D5:0.5 C5:1 A4:1 G4:2 -:2', 32, 0.95, { alt: 'steel' }),
+      ...mel('flute', 'G5:4 F5:4 Eb5:4 D5:4 G5:4 Bb5:4 Ab5:4 F#5:4', 0, 0.35, { only: 1 }),
+      ...mel('flute', 'Bb5:4 C6:4 A5:4 Bb5:4 Bb5:4 C6:4 C6:2 F#5:2 G5:4', 32, 0.45)] };
+  // QG — Marion : marche populaire, ré mineur, accordéon et caisse claire.
+  T.qg_marion = { bpm: 112, meter: 4, prog: 'Dm|Dm|Bb|C|Dm|Gm|A7|Dm|F|C|Dm|A|Bb|Gm|A7|Dm', style: 'march', drums: 'drumsMarch',
+    mel: [...mel('accordeon', 'A4:1 D5:1 F5:1.5 E5:0.5 D5:1 C5:0.5 D5:0.5 A4:2 Bb4:1 D5:1 F5:1.5 D5:0.5 E5:1 C5:1 G4:2 A4:1 D5:1 F5:1 A5:1 G5:1.5 F5:0.5 D5:1 Bb4:1 C#5:1 E5:1 A5:1 G5:0.5 E5:0.5 D5:3 -:1', 0, 0.9, { alt: 'clarinet' }),
+      ...mel('brass', 'C5:1 F5:1 A5:1.5 G5:0.5 E5:1 G5:1 C5:2 D5:1 F5:1 A5:1 F5:1 E5:1.5 D5:0.5 C#5:2 D5:1 F5:1 Bb5:1.5 A5:0.5 G5:1 Bb4:1 D5:1 E5:0.5 F5:0.5 E5:1 C#5:0.5 D5:0.5 E5:1 A4:1 D5:2 -:2', 32, 0.75, { alt: 'accordeon' })] };
+  // QG — Léon : swing manouche (« pompe »), la mineur, clarinette.
+  T.qg_leon = { bpm: 138, meter: 4, swing: 0.64, prog: 'Am6|Am6|Dm6|Dm6|E7|E7|Am6|Am6|F7|E7|Am6|A7|Dm6|Am6|B7:2 E7:2|Am6', style: 'pompe', drums: 'drumsPompe',
+    mel: [...mel('clarinet', 'E5:1 C5:0.5 A4:0.5 B4:1 C5:1 E5:2 -:1 E5:0.5 F5:0.5 F5:1 D5:0.5 A4:0.5 B4:1 D5:1 F5:2 -:1 F5:0.5 E5:0.5 D5:1 B4:0.5 G#4:0.5 B4:1 D5:1 F5:1 E5:0.5 D5:0.5 B4:2 C5:1 E5:0.5 A5:0.5 G#5:1 A5:1 E5:2 -:2', 0, 0.9, { alt: 'accordeon' }),
+      ...mel('accordeon', 'A5:1 G5:0.5 F5:0.5 Eb5:1 C5:1 B4:1 D5:0.5 F5:0.5 G#5:2 A5:1 E5:0.5 C5:0.5 A4:2 C#5:1 E5:0.5 G5:0.5 Bb5:2 A5:1 F5:0.5 D5:0.5 B4:1 F5:1 E5:1 C5:0.5 A4:0.5 C5:2 B4:1 D#5:0.5 F#5:0.5 E5:1 D5:1 C5:1 B4:1 A4:2', 32, 0.85, { alt: 'clarinet' })] };
+  // QG — Bernard : bossa feutrée, fa majeur, vibraphone et piano électrique.
+  T.qg_bernard = { bpm: 120, meter: 4, prog: 'Fmaj7|Fmaj7|Gm7|C7|Am7|D7|Gm7|C7|Fmaj7|F7|Bbmaj7|Bbm6|Am7|D7|Gm7:2 C7:2|Fmaj7', style: 'bossa', drums: 'drumsBossa',
+    mel: [...mel('vibes', 'A4:1.5 C5:0.5 E5:1 C5:1 A4:1 G4:0.5 A4:0.5 F4:2 Bb4:1.5 D5:0.5 F5:1 D5:1 E5:1 D5:0.5 C5:0.5 Bb4:2 C5:1.5 E5:0.5 G5:1 E5:1 F#5:1 E5:0.5 D5:0.5 C5:2 Bb4:1 D5:1 F5:1 A5:1 G5:2 E5:2', 0, 0.9, { alt: 'flute' }),
+      ...mel('flute', 'A5:1.5 G5:0.5 E5:1 C5:1 Eb5:2 C5:1 A4:1 D5:1.5 F5:0.5 A5:1 F5:1 Db5:2 Bb4:1 G4:1 C5:1.5 E5:0.5 G5:1 A5:1 F#5:1 A5:0.5 C6:0.5 A5:2 G5:1 F5:0.5 D5:0.5 E5:1 Bb4:1 A4:4', 32, 0.8, { alt: 'vibes' })] };
+  // Palais (Matignon, Élysée, Conseil constitutionnel, cours d'honneur) : menuet, sol majeur ; basson facétieux.
+  T.palais = { bpm: 116, meter: 3, gain: 2.6, prog: 'G|D|G|C|G|D|A7|D|D|G|Em|A7|D|G|D7|G', style: 'minuet',
+    mel: [...mel('flute', 'B4:1 G4:0.5 A4:0.5 B4:0.5 C5:0.5 D5:1 A4:1 A4:1 G5:1 E5:0.5 F#5:0.5 G5:0.5 E5:0.5 C5:1 E5:1 G5:1 D5:0.5 C5:0.5 B4:0.5 C5:0.5 D5:1 A4:1 F#4:0.5 G4:0.5 A4:1 C#5:0.5 D5:0.5 E5:1 G5:1 F#5:2 D5:1', 0, 0.8, { alt: 'harpsiL' }),
+      ...mel('harpsiL', 'A5:1 F#5:0.5 G5:0.5 A5:1 B5:1 G5:1 D5:1 E5:0.5 F#5:0.5 G5:1 B4:1 C#5:1 E5:1 A5:1 F#5:0.5 E5:0.5 D5:1 A4:1 B4:0.5 C5:0.5 D5:1 G5:1 F#5:1 C5:1 A4:1 G4:3', 24, 0.85, { alt: 'flute' }),
+      ...mel('bassoon', 'D3:0.5 E3:0.5 F#3:1 D3:1', 3, 0.7), ...mel('bassoon', 'C#3:0.5 D3:0.5 E3:0.5 C#3:0.5 A2:1', 21, 0.7), ...mel('bassoon', 'B2:0.5 C3:0.5 D3:0.5 B2:0.5 G2:1', 45, 0.7)] };
+  // Assemblée, hémicycle, commission des finances : marche pompeuse, si bémol, trompettes et timbales.
+  T.hemicycle = { bpm: 120, meter: 4, prog: 'Bb|Bb|F7|Bb|Eb|Bb|C7|F|Bb|Bb7|Eb|Ebm|Bb|G7|C7:2 F7:2|Bb', style: 'march', drums: 'drumsMarch',
+    mel: [...mel('trumpet', 'F4:0.75 Bb4:0.25 D5:1 F5:1.5 D5:0.5 Bb4:1 F4:1 Bb4:2 A4:0.75 C5:0.25 Eb5:1 F5:1 Eb5:1 D5:2 Bb4:1 -:1 G5:0.75 Eb5:0.25 Bb4:1 G4:1 Bb4:1 F5:0.75 D5:0.25 Bb4:1 F4:2 E5:1 G5:1 Bb5:1 G5:1 F5:3 -:1', 0, 0.85, { alt: 'clarinet' }),
+      ...mel('trumpet', 'D5:0.75 F5:0.25 Bb5:1.5 A5:0.5 G5:1 Ab5:1 G5:0.5 F5:0.5 D5:2 Eb5:1 G5:1 Bb5:1.5 G5:0.5 Gb5:1 Eb5:1 Bb4:2 F5:1 D5:0.5 Bb4:0.5 F5:1 D5:1 B4:1 D5:0.5 F5:0.5 G5:2 E5:1 Bb4:1 A4:1 Eb5:1 Bb4:2 -:2', 32, 0.8, { alt: 'piccolo' }),
+      ...mel('timp', 'Bb2:1 F2:1', 28, 0.7), ...mel('timp', 'F2:0.5 F2:0.5 Bb2:1', 62, 0.7)] };
+  // Bercy, comptes de campagne : jazz feutré « calculatrice », do mineur, vibraphone et pizzicati.
+  T.bercy = { bpm: 100, meter: 4, swing: 0.63, prog: 'Cm7|Fm7|Dm7b5|G7|Cm7|Ab7|Dm7b5:2 G7:2|Cm7|Ebmaj7|Abmaj7|Dm7b5|G7|Cm7|F7|Dm7b5:2 G7:2|Cm7', style: 'swing', drums: 'drumsSwing',
+    mel: [...mel('vibes', 'G4:0.5 C5:0.5 Eb5:0.5 G5:0.5 F5:1 Eb5:1 Ab4:0.5 C5:0.5 Eb5:0.5 F5:0.5 Ab5:2 F5:1 D5:0.5 Ab4:0.5 C5:1 D5:1 B4:1 D5:0.5 F5:0.5 G5:1 F5:1 Eb5:1.5 D5:0.5 C5:1 G4:1 Gb5:1 Eb5:0.5 C5:0.5 Bb4:2 Ab4:1 C5:1 B4:1 D5:1 C5:3 -:1', 0, 0.9, { alt: 'mute' }),
+      ...mel('mute', 'G5:1 Bb5:0.5 G5:0.5 D5:1 Eb5:1 C5:1 Eb5:0.5 G5:0.5 C6:2 Ab5:1 F5:0.5 D5:0.5 C5:1 Ab4:1 G4:1 B4:0.5 D5:0.5 F5:1 Ab5:1 G5:1.5 Eb5:0.5 C5:1 Bb4:1 A4:1 C5:0.5 Eb5:0.5 A5:2 Ab5:1 F5:1 G5:1 F5:1 Eb5:1 D5:1 C5:2', 32, 0.75, { alt: 'vibes' }),
+      ...[0, 8, 16, 24, 40, 48].map((t) => E(t + 3.5, 'pizzH', 84, 0.2, 0.25))] };
+  // Café du Commerce : valse musette, la mineur.
+  T.cafe = { bpm: 168, meter: 3, prog: 'Am|Am|E7|E7|E7|E7|Am|Am|A7|Dm|Dm|Am|B7|E7|E7|Am', style: 'waltz', drums: 'drumsWaltz',
+    mel: [...mel('accordeon', 'E5:1 A5:1 C6:1 B5:1.5 A5:0.5 G#5:1 B5:1 E5:1 G#5:1 B5:2 D6:1 C6:1 B5:1 A5:1 G#5:1 F5:1 D5:1 C5:1 E5:1 A5:1 A5:2 -:1 C#5:1 E5:1 G5:1 F5:1.5 E5:0.5 D5:1 A4:1 D5:1 F5:1 E5:2 C5:1 D#5:1 F#5:1 A5:1 G#5:1 B5:1 D6:1 C6:1 B5:1 G#5:1 A5:2 -:1', 0, 0.85, { alt: 'clarinet' }),
+      ...mel('guitar', 'A3:1 C4:1 E4:1', 0, 0.2, { only: 1 })] };
+  // Salon de l'agriculture : bourrée campagnarde, sol majeur, violon et accordéon.
+  T.salon = { bpm: 132, meter: 4, prog: 'G|G|C|G|G|G|D7|G|C|G|D|G|C|G|D7|G', style: 'country', drums: 'drumsCountry',
+    mel: [...mel('fiddle', 'D5:0.5 B4:0.5 G4:0.5 B4:0.5 D5:0.5 G5:0.5 D5:0.5 B4:0.5 A4:0.5 B4:0.5 C5:0.5 D5:0.5 B4:1 G4:1 E5:0.5 G5:0.5 E5:0.5 C5:0.5 G4:0.5 C5:0.5 E5:1 D5:0.5 C5:0.5 B4:0.5 A4:0.5 G4:2 B4:0.5 D5:0.5 G5:0.5 D5:0.5 B5:1 G5:1 A5:0.5 G5:0.5 F#5:0.5 E5:0.5 D5:2 C5:0.5 D5:0.5 E5:0.5 F#5:0.5 A5:1 F#5:1 G5:3 -:1', 0, 0.85, { alt: 'accordeon' }),
+      ...mel('accordeon', 'E5:1 G5:0.5 E5:0.5 C5:1 E5:1 D5:1 B4:0.5 D5:0.5 G5:2 F#5:1 A5:0.5 F#5:0.5 D5:1 A4:1 B4:0.5 C5:0.5 D5:0.5 B4:0.5 G4:2 C5:0.5 E5:0.5 G5:0.5 E5:0.5 C6:2 B5:0.5 A5:0.5 G5:0.5 F#5:0.5 G5:2 A5:1 F#5:0.5 D5:0.5 C5:1 A4:1 G4:2 -:2', 32, 0.8, { alt: 'fiddle' })] };
+  // Mairie, bureau de vote, permanence : fanfare de kiosque, fa majeur, clarinette.
+  T.mairie = { bpm: 108, meter: 4, prog: 'F|C7|F|Bb|F|C7|F|F|Bb|F|C7|F|Bb|F|G7:2 C7:2|F', style: 'march', drums: 'drumsMarch', mix: { brass: 0.7 },
+    mel: [...mel('clarinet', 'C5:1 A4:0.5 F4:0.5 A4:1 C5:1 Bb4:1 G4:0.5 E4:0.5 G4:2 A4:0.5 C5:0.5 F5:1 E5:0.5 D5:0.5 C5:1 D5:1 Bb4:1 F4:2 C5:1 A4:0.5 F4:0.5 A4:1 C5:1 E5:1 D5:0.5 C5:0.5 Bb4:2 A4:1 G4:0.5 A4:0.5 C5:1 A4:1 F4:3 -:1', 0, 0.85, { alt: 'flute' }),
+      ...mel('flute', 'D5:1 F5:0.5 D5:0.5 Bb4:1 D5:1 C5:1 A4:0.5 C5:0.5 F5:2 E5:1 G5:0.5 E5:0.5 C5:1 Bb4:1 A4:1 C5:0.5 A4:0.5 F4:2 D5:0.5 E5:0.5 F5:1 D5:1 Bb4:1 C5:1 A4:1 F5:2 B4:1 D5:1 E5:1 G5:1 F5:2 -:2', 32, 0.75, { alt: 'clarinet' })] };
+  // Barrage, Bourse du travail : rock de lutte, mi mineur, cuivres et « harmonica ».
+  T.lutte = { bpm: 126, meter: 4, prog: 'Em|Em|C|D|Em|Em|C|B7|Am|Em|C|D|Am|Em|B7|Em', style: 'rock', drums: 'drumsRock',
+    mel: [...mel('harmo', 'E5:1.5 E5:0.5 G5:1 E5:1 D5:0.5 E5:0.5 G5:1 B4:2 C5:1.5 C5:0.5 E5:1 G5:1 F#5:1 E5:0.5 D5:0.5 A4:2 E5:1.5 E5:0.5 G5:1 B5:1 A5:0.5 G5:0.5 F#5:1 E5:2 G5:1 E5:1 C5:1 E5:1 D#5:3 -:1', 0, 0.85, { alt: 'trumpet' }),
+      ...mel('trumpet', 'C5:1 E5:1 A5:1.5 G5:0.5 G5:1 F#5:0.5 E5:0.5 B4:2 C5:1 E5:1 G5:1.5 E5:0.5 F#5:1 A5:1 D5:2 E5:1 A5:1 C6:1.5 B5:0.5 B5:1 G5:0.5 E5:0.5 B4:2 D#5:1 F#5:1 A5:1 F#5:1 E5:3 -:1', 32, 0.75, { alt: 'harmo' })] };
+  // Plateau télé : funk de journal télévisé, ré mineur.
+  T.plateau = { bpm: 110, meter: 4, gain: 1.4, prog: 'Dm7|Dm7|G7|G7|Dm7|Dm7|Bbmaj7:2 A7:2|Dm7|Fmaj7|Em7:2 A7:2|Dm7|G7|Bbmaj7|A7|Dm7|A7', style: 'funk', drums: 'drumsFunk',
+    mel: [...mel('brassS', 'A4:0.5 -:0.25 C5:0.25 D5:0.5 F5:0.5 -:0.5 E5:0.5 D5:1 -:0.5 F5:0.5 A5:0.5 G5:0.25 F5:0.25 D5:2 B4:0.5 -:0.25 D5:0.25 F5:0.5 G5:0.5 -:0.5 F5:0.5 D5:1 -:0.5 B4:0.5 D5:0.5 C5:0.25 B4:0.25 G4:2 A4:0.5 -:0.25 C5:0.25 D5:0.5 F5:0.5 -:0.5 E5:0.5 D5:1 -:0.5 F5:0.5 A5:0.5 C6:0.5 A5:2 D5:1 F5:1 E5:1 C#5:1 D5:2 -:2', 0, 0.8, { alt: 'synlead' }),
+      ...mel('synlead', 'C5:1 E5:0.5 A5:0.5 G5:1 E5:1 G5:1 E5:0.5 D5:0.5 C#5:2 F5:0.5 E5:0.5 D5:0.5 A4:0.5 D5:2 F5:1 D5:0.5 B4:0.5 G4:2 A4:0.5 D5:0.5 F5:0.5 A5:0.5 G5:1 F5:1 E5:1 C#5:0.5 A4:0.5 E5:2 D5:0.5 F5:0.5 A5:0.5 D6:0.5 C6:1 A5:1 G5:1 E5:1 C#5:2', 32, 0.7, { alt: 'brassS' })] };
+  // Meeting au Zénith : hymne, do majeur, cuivres et cordes.
+  T.meeting = { bpm: 96, meter: 4, prog: 'C|G|Am|F|C|G|F|G|Am|F|C|G|F|G|Am:2 F:2|C', style: 'anthem', drums: 'drumsAnthem',
+    mel: [...mel('brass', 'E5:1.5 D5:0.5 C5:1 G5:1 G5:1.5 F5:0.5 D5:2 C5:1 E5:1 A5:1.5 G5:0.5 F5:1 E5:0.5 D5:0.5 C5:2 E5:1.5 D5:0.5 C5:1 C6:1 B5:1.5 A5:0.5 G5:2 A5:1 G5:1 F5:1 A5:1 G5:3 -:1', 0, 0.75, { alt: 'stringsL' }),
+      ...mel('stringsL', 'A5:1.5 B5:0.5 C6:1 A5:1 F5:1.5 G5:0.5 A5:2 G5:1 E5:1 C5:1 E5:1 D5:3 G4:1 A5:1 C6:1 A5:1 F5:1 G5:1 B5:1 D6:1 B5:1 C6:1 B5:0.5 A5:0.5 A5:1 G5:0.5 F5:0.5 E5:1 D5:1 C5:2', 32, 0.75, { alt: 'brass' }),
+      ...mel('brass', 'C5:4 B4:4 C5:4 A4:4', 32, 0.35, { only: 1 })] };
+  // Maison de la gauche : chanson réaliste, si mineur, guitare et accordéon.
+  T.maison = { bpm: 92, meter: 4, prog: 'Bm|G|D|A|Bm|G|Em|F#7|G|A|D|Bm|G|A|F#7|Bm', style: 'chanson', drums: 'drumsChanson',
+    mel: [...mel('accordeon', 'F#5:1 D5:0.5 B4:0.5 C#5:1 D5:1 B4:1.5 A4:0.5 G4:2 A4:1 D5:1 F#5:1 E5:0.5 D5:0.5 C#5:2 A4:2 F#5:1 D5:0.5 B4:0.5 C#5:1 D5:1 G5:1.5 F#5:0.5 D5:2 E5:1 G5:1 B5:1 G5:1 F#5:2 A#4:2', 0, 0.75, { alt: 'flute' }),
+      ...mel('flute', 'B4:1 D5:1 G5:1.5 F#5:0.5 E5:1 C#5:1 A4:2 F#5:1 A5:1 D6:1.5 C#6:0.5 B5:2 F#5:2 G5:1 E5:0.5 D5:0.5 B4:1 D5:1 C#5:1 E5:0.5 F#5:0.5 A5:2 A#5:1 F#5:1 E5:1 C#5:1 B4:3 -:1', 32, 0.7, { alt: 'accordeon' })] };
+  // Leitmotiv du Premier ministre : sarabande solennelle, mi bémol.
+  T.pm = { bpm: 80, meter: 3, prog: 'Eb|Bb|Cm|Ab|Eb|Bb|Ab:1.5 Bb:1.5|Eb', style: 'sarabande', drums: 'drumsSarabande',
+    mel: [...mel('stringsL', 'G5:2 Eb5:1 F5:2 D5:1 Eb5:1 G5:1 C6:1 C6:2 Ab5:1 Bb5:1.5 G5:0.5 Eb5:1 D5:1 F5:1 Bb5:1 Ab5:1 G5:1 F5:1 Eb5:3', 0, 0.75, { alt: 'trumpet' })] };
+  // Leitmotiv de Mme Fabre (la trésorière) : boîte à musique qui compte, do majeur.
+  T.fabre = { bpm: 132, meter: 3, gain: 3.2, prog: 'C|G7|G7|C|C|F|G7|C', style: 'musicbox',
+    mel: [...mel('celesta', 'E5:0.5 G5:0.5 C6:1 G5:1 F5:0.5 G5:0.5 B5:1 G5:1 D5:0.5 F5:0.5 G5:1 B4:1 C5:2 -:1 E5:0.5 F5:0.5 G5:1 E6:1 C6:0.5 A5:0.5 F5:1 A5:1 G5:0.5 F5:0.5 D5:1 B4:1 C5:2 -:1', 0, 0.8, { alt: 'marimba' })] };
+  // Leitmotiv d'Inès (journaliste) : polar jazz, fa mineur, trompette bouchée.
+  T.ines = { bpm: 84, meter: 4, swing: 0.64, prog: 'Fm7|Fm7|Dbmaj7|C7|Fm7|Bbm7|Gm7b5:2 C7:2|Fm7', style: 'swing', drums: 'drumsSwing',
+    mel: [...mel('mute', 'C5:1.5 Ab4:0.5 F4:2 G4:0.5 Ab4:0.5 C5:0.5 Eb5:0.5 Db5:2 C5:1 F5:1 Ab5:1.5 G5:0.5 E5:2 Bb4:2 C5:1.5 Ab4:0.5 F4:1 G4:1 Ab4:0.5 Bb4:0.5 Db5:0.5 F5:0.5 Ab5:2 G5:1 Db5:1 E5:1 Bb4:1 C5:3 -:1', 0, 0.75, { alt: 'vibes' })] };
+
+  // lieu → thème (fonction : le QG prend le thème du candidat)
+  const hero = () => { try { return AK.music._hero || 'marion'; } catch (e) { return 'marion'; } };
+  const SCENES = { accueil: 'titre', coulisses: 'titre', qg: () => 'qg_' + hero(), matignon: 'palais', elysee: 'palais', conseil_constit: 'palais', cour_matignon: 'palais', palais_royal: 'palais',
+    assemblee: 'hemicycle', hemicycle: 'hemicycle', commission_finances: 'hemicycle', bercy: 'bercy', cnccfp: 'bercy', cafe_commerce: 'cafe', salon: 'salon', mairie: 'mairie', bureau_vote: 'mairie', permanence: 'mairie',
+    barrage: 'lutte', bourse_travail: 'lutte', studio: 'plateau', meeting: 'meeting', maison_gauche: 'maison' };
+  const OLDNAMES = { jazz: 'titre', baroque: 'palais', synthe: 'plateau', musette: 'cafe', tension: 'lutte', fanfare: 'meeting' };
+  const CHARS = { pm: 'pm', fabre: 'fabre', ines: 'ines' };
+  AK.PARTITIONS = { themes: T, scenes: SCENES, chars: CHARS, styles: STY, bars, chordOf, N };
+
+  // --------------------------------------------------------------- « compilation » d'un thème en événements
+  function compile(name) {
+    const th = T[name]; if (!th) return null; if (th._ev) return th;
+    const m = th.meter; const B = bars(th.prog, m); const ev = [];
+    B.list.forEach((c, k) => { const nx = B.list[k + 1] || B.list[0]; ev.push(...STY[th.style](c, m, c.bar, B.n, nx)); });
+    if (th.drums) for (let b = 0; b < B.n; b++) ev.push(...STY[th.drums](b, m, b % 8 === 7, B.n));
+    ev.push(...th.mel);
+    th._ev = ev.filter((e) => e.n === undefined || e.n === null || isFinite(e.n)).sort((a, b) => a.t - b.t); th._beats = B.n * m; return th;
+  }
+  AK.PARTITIONS.compile = compile;
+
+  if (typeof window === 'undefined' || !AK.music) return;   // tests : partitions seules
+
+  // --------------------------------------------------------------- synthèse (orchestre « MIDI »)
+  const freq = (n) => 440 * Math.pow(2, (n - 69) / 12);
+  const PAN = { bass: 0, synbass: 0, tuba: 0, kick: 0, snare: 0.05, hat: 0.3, hato: 0.3, hatp: 0.3, ride: 0.35, crash: -0.3, shaker: 0.4, tamb: 0.35, brush: 0.1, rim: -0.25, tom: -0.15, timp: -0.2,
+    organ: -0.35, guitar: 0.35, epiano: -0.25, pah: -0.3, harpsi: 0.3, harpsiL: 0.15, strings: -0.15, stringsL: -0.05, pizz: 0.25, pizzH: 0.4, brass: 0.15, trumpet: 0.1, piccolo: 0.2,
+    steel: 0.05, marimba: -0.05, vibes: 0.1, celesta: 0.15, flute: -0.15, clarinet: -0.1, bassoon: 0.2, accordeon: -0.05, fiddle: 0.1, harmo: 0, mute: 0.05, brassS: 0.1, synlead: 0 };
+  const VOL = { bass: 0.42, synbass: 0.36, tuba: 0.4, kick: 0.55, snare: 0.22, hat: 0.07, hato: 0.08, hatp: 0.06, ride: 0.07, crash: 0.1, shaker: 0.06, tamb: 0.06, brush: 0.1, rim: 0.12, tom: 0.3, timp: 0.4,
+    organ: 0.07, guitar: 0.24, epiano: 0.12, pah: 0.06, harpsi: 0.24, harpsiL: 0.3, strings: 0.075, stringsL: 0.075, pizz: 0.28, pizzH: 0.2, brass: 0.07, trumpet: 0.085, piccolo: 0.07,
+    steel: 0.2, marimba: 0.24, vibes: 0.16, celesta: 0.12, flute: 0.15, clarinet: 0.085, bassoon: 0.1, accordeon: 0.06, fiddle: 0.07, harmo: 0.08, mute: 0.08, brassS: 0.08, synlead: 0.06 };
+
+  function makePlayer(a, outNode) {
+    // chaîne : thèmes → compresseur → (sec + réverbération) → sortie
+    const comp = a.createDynamicsCompressor(); comp.threshold.value = -20; comp.ratio.value = 3; comp.attack.value = 0.01; comp.release.value = 0.25;
+    const out = a.createGain(); out.gain.value = 0.9; comp.connect(out); out.connect(outNode);
+    const rev = a.createConvolver(); const len = Math.floor(a.sampleRate * 1.9); const ir = a.createBuffer(2, len, a.sampleRate);
+    for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2) * (i < 200 ? i / 200 : 1); }
+    rev.buffer = ir; const wet = a.createGain(); wet.gain.value = 0.2; rev.connect(wet); wet.connect(comp);
+    // tampons de bruit et de cordes pincées (Karplus‑Strong), mis en cache
+    const nb = a.createBuffer(1, a.sampleRate * 2, a.sampleRate); { const d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+    const KS = {};
+    function ks(n, kind) {
+      const key = kind + n; if (KS[key]) return KS[key];
+      const P = { guitar: [0.55, 0.9965, 1.8], harpsi: [0.95, 0.9935, 1.1], harpsiL: [0.9, 0.994, 1.2], pizz: [0.4, 0.985, 0.6], pizzH: [0.5, 0.982, 0.5] }[kind];
+      const sr = a.sampleRate, f = freq(n), Np = Math.max(2, Math.round(sr / f)), L = Math.floor(sr * P[2]); const b = a.createBuffer(1, L, sr), d = b.getChannelData(0);
+      const ring = new Float32Array(Np); let prev = 0; for (let i = 0; i < Np; i++) { const r = Math.random() * 2 - 1; prev = prev + (r - prev) * P[0]; ring[i] = prev; }
+      let idx = 0; for (let i = 0; i < L; i++) { const nx = (idx + 1) % Np; const v = ring[idx]; d[i] = v; ring[idx] = P[1] * 0.5 * (v + ring[nx]); idx = nx; }
+      return (KS[key] = b);
+    }
+    function voice(dest, ev, t, spb, wetDest) {
+      const i = ev.i, vel = (ev.v === undefined ? 1 : ev.v) * (0.92 + Math.random() * 0.16), dur = Math.max(0.05, (ev.d || 0.25) * spb); const f = ev.n !== undefined && ev.n !== null ? freq(ev.n) : 0;
+      const g = a.createGain(); const pn = a.createStereoPanner ? a.createStereoPanner() : null; if (pn) { pn.pan.value = PAN[i] || 0; g.connect(pn); pn.connect(dest); } else g.connect(dest);
+      const send = a.createGain(); send.gain.value = { kick: 0.05, bass: 0.05, synbass: 0.03, tuba: 0.1 }[i] || 0.6; g.connect(send); send.connect(wetDest || rev);
+      const peak = (VOL[i] || 0.08) * vel; const nodes = []; let end = t + dur + 0.3;
+      const O = (type, fr, det = 0) => { const o = a.createOscillator(); o.type = type; o.frequency.setValueAtTime(fr, t); o.detune.value = det; nodes.push(o); return o; };
+      const F = (type, fr, q = 0.7) => { const x = a.createBiquadFilter(); x.type = type; x.frequency.setValueAtTime(fr, t); x.Q.value = q; return x; };
+      const ADSR = (gn, att, dec, sus, rel, hold = dur) => { const p = gn.gain; p.setValueAtTime(0.0001, t); p.linearRampToValueAtTime(peak, t + att); p.setTargetAtTime(peak * sus, t + att, dec); p.setTargetAtTime(0.0001, t + Math.max(att, hold), rel); end = t + Math.max(att, hold) + rel * 5; };
+      const PERC = (gn, att, dec, pk = peak) => { const p = gn.gain; p.setValueAtTime(0.0001, t); p.linearRampToValueAtTime(pk, t + att); p.setTargetAtTime(0.0001, t + att, dec); end = t + att + dec * 6; };
+      const noise = (fType, fr, q) => { const s = a.createBufferSource(); s.buffer = nb; s.loopStart = Math.random(); nodes.push(s); const fl = F(fType, fr, q); s.connect(fl); return fl; };
+      const vib = (o, rate, depth, delay = 0.18) => { const l = O('sine', rate); const lg = a.createGain(); lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(depth, t + delay + 0.25); l.connect(lg); lg.connect(o.frequency); };
+      switch (i) {
+        case 'bass': { const o = O('triangle', f), o2 = O('sine', f); const lp = F('lowpass', 900); lp.frequency.setTargetAtTime(380, t, 0.12); o.connect(lp); o2.connect(lp); lp.connect(g); ADSR(g, 0.008, 0.25, 0.55, 0.06, dur * 0.9); break; }
+        case 'synbass': { const o = O('sawtooth', f), o2 = O('square', f / 2); const lp = F('lowpass', 2200, 4); lp.frequency.setTargetAtTime(300, t + 0.01, 0.06); o.connect(lp); o2.connect(lp); lp.connect(g); ADSR(g, 0.004, 0.12, 0.6, 0.04, dur * 0.85); break; }
+        case 'tuba': { const o = O('sawtooth', f), o2 = O('sine', f); const lp = F('lowpass', 420, 1.2); o.connect(lp); o2.connect(lp); lp.connect(g); ADSR(g, 0.04, 0.2, 0.7, 0.08, dur * 0.85); break; }
+        case 'kick': { const o = O('sine', 125); o.frequency.exponentialRampToValueAtTime(42, t + 0.13); o.connect(g); PERC(g, 0.002, 0.12); const cl = noise('highpass', 3000); const cg = a.createGain(); cg.gain.setValueAtTime(peak * 0.25, t); cg.gain.setTargetAtTime(0.0001, t, 0.005); cl.connect(cg); cg.connect(g); break; }
+        case 'snare': { const nz = noise('bandpass', 1900, 0.8); nz.connect(g); const o = O('triangle', 190); o.frequency.exponentialRampToValueAtTime(140, t + 0.06); const og = a.createGain(); og.gain.setValueAtTime(0.6, t); og.gain.setTargetAtTime(0.0001, t, 0.03); o.connect(og); og.connect(g); PERC(g, 0.001, 0.06); break; }
+        case 'hat': case 'hatp': case 'hato': { const nz = noise('highpass', 7200, 0.7); nz.connect(g); PERC(g, 0.001, i === 'hato' ? 0.09 : 0.018); break; }
+        case 'ride': { const nz = noise('bandpass', 8500, 1.2); nz.connect(g); const o = O('square', 3150); const og = a.createGain(); og.gain.value = 0.15; o.connect(og); og.connect(g); PERC(g, 0.001, 0.22); break; }
+        case 'crash': { const nz = noise('highpass', 3200, 0.5); nz.connect(g); PERC(g, 0.002, 0.5); break; }
+        case 'shaker': { const nz = noise('highpass', 5200, 0.8); nz.connect(g); PERC(g, 0.012, 0.025); break; }
+        case 'tamb': { const nz = noise('bandpass', 9000, 2); nz.connect(g); PERC(g, 0.002, 0.03); break; }
+        case 'brush': { const nz = noise('bandpass', 4200, 0.6); nz.connect(g); PERC(g, 0.01, 0.05); break; }
+        case 'rim': { const o = O('square', 820); const bp = F('bandpass', 1600, 3); o.connect(bp); bp.connect(g); PERC(g, 0.001, 0.015); break; }
+        case 'tom': { const o = O('sine', freq(ev.n || 45)); o.frequency.exponentialRampToValueAtTime(freq(ev.n || 45) * 0.7, t + 0.25); o.connect(g); PERC(g, 0.002, 0.11); break; }
+        case 'timp': { const o = O('sine', f), o2 = O('sine', f * 1.5); o.frequency.exponentialRampToValueAtTime(f * 0.97, t + 0.6); const og = a.createGain(); og.gain.value = 0.25; o2.connect(og); og.connect(g); o.connect(g); const nz = noise('lowpass', 300); const ng = a.createGain(); ng.gain.setValueAtTime(0.5, t); ng.gain.setTargetAtTime(0.0001, t, 0.03); nz.connect(ng); ng.connect(g); PERC(g, 0.003, 0.35); break; }
+        case 'organ': { for (const [h, gn] of [[1, 1], [2, 0.6], [3, 0.35], [4, 0.2], [0.5, 0.45]]) { const o = O('sine', f * h); const og = a.createGain(); og.gain.value = gn; o.connect(og); og.connect(g); vib(o, 6.5, f * h * 0.004, 0); } ADSR(g, 0.006, 0.4, 0.85, 0.03); break; }
+        case 'epiano': { const c0 = O('sine', f), md = O('sine', f); const mg = a.createGain(); mg.gain.setValueAtTime(f * 1.6, t); mg.gain.setTargetAtTime(f * 0.15, t, 0.25); md.connect(mg); mg.connect(c0.frequency); const t2 = O('sine', f * 7); const tg = a.createGain(); tg.gain.setValueAtTime(0.12, t); tg.gain.setTargetAtTime(0.0001, t, 0.04); t2.connect(tg); tg.connect(g); c0.connect(g); ADSR(g, 0.003, 0.6, 0.3, 0.15); break; }
+        case 'steel': { const c0 = O('sine', f * 1.012); c0.frequency.setTargetAtTime(f, t, 0.02); const md = O('sine', f * 2); const mg = a.createGain(); mg.gain.setValueAtTime(f * 0.9, t); mg.gain.setTargetAtTime(f * 0.05, t, 0.08); md.connect(mg); mg.connect(c0.frequency); const o2 = O('sine', f * 2.01); const og = a.createGain(); og.gain.value = 0.32; o2.connect(og); og.connect(g); c0.connect(g); PERC(g, 0.003, 0.32); break; }
+        case 'marimba': { const o = O('sine', f), o2 = O('sine', f * 4); const og = a.createGain(); og.gain.setValueAtTime(0.35, t); og.gain.setTargetAtTime(0.0001, t, 0.02); o2.connect(og); og.connect(g); o.connect(g); PERC(g, 0.002, 0.2); break; }
+        case 'vibes': { const o = O('sine', f), o2 = O('sine', f * 4); const og = a.createGain(); og.gain.setValueAtTime(0.18, t); og.gain.setTargetAtTime(0.0001, t, 0.05); o2.connect(og); og.connect(g); const tr = a.createGain(); tr.gain.value = 1; const l = O('sine', 5.2); const lg = a.createGain(); lg.gain.value = 0.3; l.connect(lg); lg.connect(tr.gain); o.connect(tr); tr.connect(g); PERC(g, 0.002, Math.min(0.9, 0.25 + dur * 0.4)); break; }
+        case 'celesta': { const o = O('sine', f), o2 = O('sine', f * 2), o3 = O('sine', f * 5.4); const a2 = a.createGain(); a2.gain.value = 0.35; o2.connect(a2); a2.connect(g); const a3 = a.createGain(); a3.gain.setValueAtTime(0.15, t); a3.gain.setTargetAtTime(0.0001, t, 0.04); o3.connect(a3); a3.connect(g); o.connect(g); PERC(g, 0.002, 0.35); break; }
+        case 'guitar': case 'harpsi': case 'harpsiL': case 'pizz': case 'pizzH': { const s = a.createBufferSource(); s.buffer = ks(ev.n, i); nodes.push(s); let x = s; if (i === 'harpsi' || i === 'harpsiL') { const hp = F('highpass', 220); s.connect(hp); x = hp; } x.connect(g); const p = g.gain; p.setValueAtTime(peak, t); p.setTargetAtTime(0.0001, t + Math.max(dur, 0.1) * (i === 'guitar' ? 1 : 0.9), 0.08); end = t + Math.min(s.buffer.duration, dur + 0.6); break; }
+        case 'strings': case 'stringsL': { for (const d of [-9, 0, 8]) { const o = O('sawtooth', f, d); vib(o, 5.4, f * 0.004, 0.25); const lp = F('lowpass', i === 'stringsL' ? 2600 : 1800); o.connect(lp); lp.connect(g); } ADSR(g, i === 'stringsL' ? 0.08 : 0.25, 0.4, 0.85, 0.25); break; }
+        case 'brass': case 'trumpet': case 'brassS': case 'mute': case 'piccolo': { const dets = i === 'brass' ? [-7, 6] : [0]; const pk = i === 'brassS' ? 4200 : i === 'mute' ? 1700 : 3000; for (const d of dets) { const o = O('sawtooth', i === 'piccolo' ? f * 2 : f, d); vib(o, 5.6, f * 0.005, 0.3); const lp = F('lowpass', 500, 1.2); lp.frequency.linearRampToValueAtTime(pk * (0.6 + 0.4 * vel), t + 0.05); lp.frequency.setTargetAtTime(pk * 0.45, t + 0.08, 0.2); o.connect(lp); if (i === 'mute') { const bp = F('bandpass', 1400, 2.4); lp.connect(bp); bp.connect(g); } else lp.connect(g); } ADSR(g, i === 'brassS' ? 0.01 : 0.03, 0.2, 0.75, 0.07, dur * 0.92); break; }
+        case 'synlead': { const o = O('square', f), o2 = O('sawtooth', f, 9); vib(o, 5.8, f * 0.006); vib(o2, 5.8, f * 0.006); const lp = F('lowpass', 2600, 2); o.connect(lp); o2.connect(lp); lp.connect(g); ADSR(g, 0.01, 0.2, 0.7, 0.06, dur * 0.9); break; }
+        case 'flute': { const o = O('sine', f), o2 = O('triangle', f * 2); const og = a.createGain(); og.gain.value = 0.18; o2.connect(og); og.connect(g); vib(o, 5.2, f * 0.006, 0.25); o.connect(g); const br = noise('bandpass', f * 2, 2); const bg = a.createGain(); bg.gain.setValueAtTime(0.25, t); bg.gain.setTargetAtTime(0.03, t, 0.05); br.connect(bg); bg.connect(g); ADSR(g, 0.05, 0.3, 0.85, 0.08, dur * 0.95); break; }
+        case 'clarinet': { const o = O('square', f); vib(o, 5, f * 0.004, 0.3); const lp = F('lowpass', Math.min(4000, f * 4), 0.8); o.connect(lp); lp.connect(g); ADSR(g, 0.03, 0.3, 0.85, 0.06, dur * 0.95); break; }
+        case 'bassoon': { const o = O('sawtooth', f); const bp = F('bandpass', 520, 1.6); const lp = F('lowpass', 1400); o.connect(bp); bp.connect(lp); lp.connect(g); ADSR(g, 0.025, 0.2, 0.8, 0.06, dur * 0.85); break; }
+        case 'harmo': { const o = O('square', f, -5), o2 = O('sawtooth', f, 5); vib(o, 6, f * 0.008, 0.15); vib(o2, 6, f * 0.008, 0.15); const bp = F('bandpass', 1800, 0.9); o.connect(bp); o2.connect(bp); bp.connect(g); ADSR(g, 0.02, 0.2, 0.8, 0.05, dur * 0.9); break; }
+        case 'fiddle': { for (const d of [-4, 4]) { const o = O('sawtooth', f, d); vib(o, 6, f * 0.006, 0.12); const pk = F('peaking', 2800, 1.5); pk.gain.value = 6; const lp = F('lowpass', 5000); o.connect(pk); pk.connect(lp); lp.connect(g); } ADSR(g, 0.03, 0.2, 0.75, 0.06, dur * 0.92); break; }
+        case 'accordeon': case 'pah': { for (const d of [-11, 0, 12]) { const o = O(d ? 'sawtooth' : 'square', f, d); const lp = F('lowpass', i === 'pah' ? 1100 : 2400); o.connect(lp); lp.connect(g); } const tr = O('sine', 4.6); const tg = a.createGain(); tg.gain.value = peak * 0.12; tr.connect(tg); tg.connect(g.gain); ADSR(g, 0.025, 0.2, 0.85, 0.06, dur * 0.88); break; }
+        default: { const o = O('triangle', f || 440); o.connect(g); PERC(g, 0.005, 0.2); }
+      }
+      for (const nd of nodes) { try { nd.start(t); nd.stop(end + 0.1); } catch (e) { /* ignoré */ } }
+      nodes[nodes.length - 1] && (nodes[nodes.length - 1].onended = () => { try { g.disconnect(); send.disconnect(); if (pn) pn.disconnect(); } catch (e) { /* déjà fait */ } });
+    }
+
+    let cur = null;
+    function stopCur(fade = 1.2) {
+      if (!cur) return; const c = cur; cur = null; clearInterval(c.timer);
+      for (const gn of [c.gain, c.wet]) { try { gn.gain.cancelScheduledValues(a.currentTime); gn.gain.setValueAtTime(gn.gain.value, a.currentTime); gn.gain.linearRampToValueAtTime(0.0001, a.currentTime + fade); } catch (e) { /* */ } }
+      setTimeout(() => { try { c.gain.disconnect(); c.wet.disconnect(); } catch (e) { /* */ } }, fade * 1000 + 2500);
+    }
+    function play(name) {
+      if (cur && cur.name === name) return; const th = compile(name); if (!th) return;
+      stopCur(); const gain = a.createGain(); gain.gain.setValueAtTime(0.0001, a.currentTime); gain.gain.linearRampToValueAtTime(th.gain || 1, a.currentTime + 1.4); gain.connect(comp); const wetG = a.createGain(); wetG.gain.setValueAtTime(0.0001, a.currentTime); wetG.gain.linearRampToValueAtTime(1, a.currentTime + 1.4); wetG.connect(rev);
+      const spb = 60 / th.bpm, sw = th.swing || 0; let loopStart = a.currentTime + 0.25, idx = 0, loop = 0; const evs = th._ev;
+      const tt = (b) => { if (!sw) return b; const i = Math.floor(b), fr = b - i; return Math.abs(fr - 0.5) < 1e-6 ? i + sw : b; };
+      const tick = () => {
+        const horizon = a.currentTime + 0.45;
+        for (let guard = 0; guard < 400; guard++) {
+          if (idx >= evs.length) { idx = 0; loop++; loopStart += th._beats * spb; }
+          const ev = evs[idx]; const t = loopStart + tt(ev.t) * spb + (Math.random() - 0.5) * 0.008; if (t > horizon) break;
+          idx++;
+          if (ev.only !== undefined && (loop % 2) !== ev.only) continue;
+          if (t < a.currentTime - 0.02) continue;
+          const e2 = (ev.alt && loop % 2 === 1) ? Object.assign({}, ev, { i: ev.alt }) : ev;
+          try { voice(gain, e2, Math.max(t, a.currentTime + 0.005), spb, wetG); } catch (e) { /* note perdue */ }
+        }
+      };
+      tick(); cur = { name, gain, wet: wetG, timer: setInterval(tick, 90) };
+    }
+    // rendu hors temps réel (vérification des niveaux, extraits audio) : programme `loops` tours d'un thème dès t = 0,1 s
+    function schedule(name, loops = 1) {
+      const th = compile(name); const spb = 60 / th.bpm, sw = th.swing || 0; const gain = a.createGain(); gain.gain.value = th.gain || 1; gain.connect(comp); const wetG = a.createGain(); wetG.connect(rev);
+      const tt = (b) => { if (!sw) return b; const i = Math.floor(b), fr = b - i; return Math.abs(fr - 0.5) < 1e-6 ? i + sw : b; };
+      for (let L = 0; L < loops; L++) for (const ev of th._ev) { if (ev.only !== undefined && L % 2 !== ev.only) continue; const e2 = ev.alt && L % 2 === 1 ? Object.assign({}, ev, { i: ev.alt }) : ev; voice(gain, e2, 0.1 + (L * th._beats + tt(ev.t)) * spb, spb, wetG); }
+      return th._beats * spb * loops;
+    }
+    return { _v2: true, play, schedule, stop: () => stopCur(0.8), get name() { return cur ? cur.name : null; } };
+  }
+
+  AK.PARTITIONS.makePlayer = makePlayer;
+
+  // --------------------------------------------------------------- branchement (sans toucher au moteur)
+  const M = AK.music;
+  try {
+    const q = new URLSearchParams(location.search).get('musique'); const st = localStorage.getItem('ak:music');
+    M.enabled = q === '0' ? false : st !== '0';                     // allumée par défaut ; « Musique : non » dans le menu est mémorisé
+  } catch (e) { M.enabled = true; }
+  M._scene = null; M._dlg = null; M._hero = null;
+  const resolve = () => {
+    if (M._dlg && T[M._dlg]) return M._dlg;
+    const s = SCENES[M._scene]; if (s) return typeof s === 'function' ? s() : s;
+    return OLDNAMES[M.wanted] || (T[M.wanted] ? M.wanted : 'titre');
+  };
+  M.kick = () => {
+    const A = AK.audio; if (!A || !A.ctx || !M.enabled) return;
+    if (!M.player || !M.player._v2) { if (M.player) try { M.player.stop(); } catch (e) { /* */ } const o = A.ctx.createGain(); o.gain.value = 0.62; o.connect(A.master); M.player = makePlayer(A.ctx, o); }
+    try { if (A.ctx.state === 'suspended') A.ctx.resume(); } catch (e) { /* */ }
+    M.player.play(resolve());
+  };
+  M.setEnabled = (on) => { M.enabled = !!on; if (!on && M.player) M.player.stop(); else M.kick(); };
+  if (AK.BrowserIO) {
+    const sc0 = AK.BrowserIO.prototype.sceneChanged;
+    AK.BrowserIO.prototype.sceneChanged = function (id) { M._scene = id; try { const g = this.rt && this.rt.game; M._hero = g && g.state && g.state.hero; } catch (e) { /* */ } return sc0.call(this, id); };
+  }
+  if (AK.Game && AK.Game.prototype.runDialogue) {
+    const rd0 = AK.Game.prototype.runDialogue; let depth = 0;
+    AK.Game.prototype.runDialogue = async function (id) {
+      let set = false;
+      try { if (depth === 0) { for (const n of this.sceneNpcs()) { if (n.def && n.def.dialogue === id && CHARS[n.def.char]) { M._dlg = CHARS[n.def.char]; set = true; M.kick(); break; } } } } catch (e) { /* */ }
+      depth++;
+      try { return await rd0.call(this, id); } finally { depth--; if (set) { M._dlg = null; M.kick(); } }
+    };
+  }
+})(globalThis.AK);
+
+
 /* ===== game/zz-peinture.js ===== */
 // ============================================================================
 //  V11 — DIRECTION ARTISTIQUE « GRANDS MAÎTRES » (aucun code moteur : on enrobe SceneRenderer.finishBg et .bake)
