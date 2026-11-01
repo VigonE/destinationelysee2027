@@ -8558,6 +8558,7 @@ AK.config({
 //   • robots / crawlers / navigateurs automatisés (User-Agent, navigator.webdriver) : jamais comptés ;
 //   • vue : une seule par session de navigation (sessionStorage) ; visiteur unique : un seul « +1 » par navigateur (localStorage) ;
 //   • rien n'est compté en local (file://, localhost), en mode ?nosave=1 / ?debug=1 / ?stats=0, ni dans les tests (headless) ;
+//   • temps de jeu actif (onglet visible + saisie humaine récente, plafonné à 2 h) : +1 sur chaque jalon atteint (30 s … 2 h) → temps moyen des joueurs engagés ;
 //   • fins : +1 « fin_elu » ou « fin_battu » quand une partie se termine (une fois par partie).
 //  Affichage : entrée « Statistiques » du menu ☰ → fenêtre avec une LED verte (service joignable) ou rouge (injoignable), rafraîchie toutes les 20 s.
 //  Le jeu ne dépend jamais de ce service : en cas d'erreur, il continue normalement.
@@ -8575,9 +8576,25 @@ AK.config({
     if (!ua || typeof ua !== 'string' || ua.length < 20) return true;
     return RE_BOT.test(ua);
   };
+  // ---- temps de jeu : « survie » par jalons ----
+  // Abacus ne sait qu'ajouter 1 : on ne peut donc pas cumuler des secondes. Chaque session humaine ajoute +1 au compteur de CHAQUE jalon
+  // qu'elle atteint en temps de jeu ACTIF (onglet visible + saisie récente). Le nombre de sessions « ≥ t » donne la courbe de survie S(t) ;
+  // le temps moyen est son intégrale (méthode des trapèzes). Pas besoin d'envoyer quoi que ce soit à la fermeture de l'onglet (peu fiable).
+  const JALONS = [0.5, 1, 2, 5, 10, 20, 30, 60, 120];                                    // minutes
+  const jalonCle = (m) => 'tps_' + (m < 1 ? Math.round(m * 60) + 's' : m + 'm');          // tps_30s, tps_1m, tps_2m, …, tps_120m
+  // Temps moyen des joueurs « engagés » (≥ 30 s de jeu actif). Renvoie null s'il y a trop peu de données (< 5 sessions engagées).
+  const moyenne = (c) => {
+    if (!Array.isArray(c) || c.length !== JALONS.length || c.some((v) => !Number.isFinite(v) || v < 0)) return null;
+    const m = c.slice(); for (let i = 1; i < m.length; i++) m[i] = Math.min(m[i], m[i - 1]);   // une session ne peut pas atteindre 5 min sans avoir atteint 2 min
+    const base = m[0]; if (base < 5) return null;
+    let e = JALONS[0];
+    for (let i = 0; i < JALONS.length - 1; i++) e += ((m[i] + m[i + 1]) / 2 / base) * (JALONS[i + 1] - JALONS[i]);
+    return { moyenne: e, engages: base, pct10: m[4] / base, pct30: m[6] / base };         // moyenne en minutes, plafonnée à 2 h par session
+  };
+  const fmtDuree = (min) => { if (!Number.isFinite(min)) return '—'; const s = Math.round(min * 60); return s < 3600 ? Math.floor(s / 60) + ' min ' + String(s % 60).padStart(2, '0') + ' s' : Math.floor(s / 3600) + ' h ' + String(Math.floor((s % 3600) / 60)).padStart(2, '0'); };
   const fmt = (n) => (Number.isFinite(n) ? Math.round(n).toLocaleString('fr-FR') : '—');
 
-  AK.stats = { BASE, NS, CLES, estBot };
+  AK.stats = { BASE, NS, CLES, estBot, JALONS, jalonCle, moyenne, fmtDuree };
   if (typeof window === 'undefined' || typeof document === 'undefined') return;   // tests / headless : rien d'autre
 
   const params = (() => { try { return new URLSearchParams(location.search); } catch (e) { return new URLSearchParams(''); } })();
@@ -8612,6 +8629,28 @@ AK.config({
   }
   setTimeout(compter, 2500);
 
+  // ---- temps de jeu ACTIF (humain) ----
+  // On compte une seconde seulement si : onglet visible ET saisie réelle (isTrusted : un script ne compte pas) dans les 20 dernières secondes ;
+  // la première saisie humaine déclenche la mesure ; le total est plafonné à 2 h ; la session survit au rechargement (sessionStorage).
+  const tps = { s: 0, ok: [], humain: false, dernier: 0, enCours: false };
+  AK.stats.tps = tps;
+  (function mesure() {
+    if (!AK.stats.actif) return;
+    const ss = stock('sessionStorage');
+    try { const v = ss && JSON.parse(ss.getItem('ak:stat:tps') || 'null'); if (v && Number.isFinite(v.s) && Array.isArray(v.ok)) { tps.s = v.s; tps.ok = v.ok.filter((x) => JALONS.includes(x)); tps.humain = !!v.h; } } catch (e) { /* ignoré */ }
+    const saisie = (e) => { if (e && e.isTrusted === false) return; tps.humain = true; tps.dernier = Date.now(); };
+    ['pointerdown', 'pointermove', 'keydown', 'touchstart', 'wheel'].forEach((t) => window.addEventListener(t, saisie, { capture: true, passive: true }));
+    setInterval(() => {
+      if (document.visibilityState !== 'visible' || !tps.humain || Date.now() - tps.dernier > 20000 || tps.s >= 7200) return;
+      tps.s += 1;
+      if (ss && tps.s % 5 === 0) { try { ss.setItem('ak:stat:tps', JSON.stringify({ s: tps.s, ok: tps.ok, h: 1 })); } catch (e) { /* ignoré */ } }
+      const j = JALONS.find((m) => tps.s >= m * 60 && !tps.ok.includes(m));
+      if (j !== undefined && !tps.enCours) {                                       // un jalon à la fois ; marqué atteint seulement si le +1 a réussi (sinon on réessaie)
+        tps.enCours = true; hit(jalonCle(j)).then((r) => { if (r.ok) { tps.ok.push(j); if (ss) { try { ss.setItem('ak:stat:tps', JSON.stringify({ s: tps.s, ok: tps.ok, h: 1 })); } catch (e) { /* ignoré */ } } } }).finally(() => { tps.enCours = false; });
+      }
+    }, 1000);
+  })();
+
   // ---- fin de partie : +1 (une fois par partie) ----
   let finVue = false;
   setInterval(() => {
@@ -8624,15 +8663,15 @@ AK.config({
 
   // ---- fenêtre « Statistiques » (LED verte / rouge) ----
   const UI = AK.UI ? AK.UI.prototype : null; if (!UI) return;
-  const etat = { open: false, t: 0, led: 'attente', vues: NaN, uniques: NaN, elu: NaN, battu: NaN, maj: 0, timer: null };
+  const etat = { open: false, t: 0, led: 'attente', vues: NaN, uniques: NaN, elu: NaN, battu: NaN, duree: null, maj: 0, timer: null };
   AK.stats.etat = etat;
 
   async function rafraichir() {
     etat.led = etat.led === 'ok' || etat.led === 'ko' ? etat.led : 'attente';
-    const rs = await Promise.all([appel('get', CLES.vues), appel('get', CLES.uniques), appel('get', CLES.elu), appel('get', CLES.battu)]);
+    const rs = await Promise.all([appel('get', CLES.vues), appel('get', CLES.uniques), appel('get', CLES.elu), appel('get', CLES.battu)].concat(JALONS.map((m) => appel('get', jalonCle(m)))));
     const ok = rs.every((r) => r.ok);                                   // LED verte : les 4 lectures ont abouti
     etat.led = ok ? 'ok' : 'ko';
-    if (ok) { etat.vues = rs[0].value; etat.uniques = rs[1].value; etat.elu = rs[2].value; etat.battu = rs[3].value; etat.maj = Date.now(); }
+    if (ok) { etat.vues = rs[0].value; etat.uniques = rs[1].value; etat.elu = rs[2].value; etat.battu = rs[3].value; etat.duree = moyenne(rs.slice(4).map((r) => r.value)); etat.maj = Date.now(); }
   }
   AK.stats.rafraichir = rafraichir;
   AK.stats.afficher = function () {
@@ -8663,7 +8702,7 @@ AK.config({
   function dessiner(ui, ctx) {
     const L = ui.L, W = L.w, H = L.totalH, t = etat.t, a = Math.min(1, t / 0.2);
     ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = 'rgba(0,0,0,0.72)'; ctx.fillRect(0, 0, W, H);
-    const pw = Math.min(W - 24, 300), ph = 150, px = (W - pw) / 2, py = Math.max(6, (L.viewH - ph) / 2 + 4);
+    const pw = Math.min(W - 24, 300), ph = 196, px = (W - pw) / 2, py = Math.max(6, (L.viewH - ph) / 2 + 4);
     ui.rrect(ctx, px, py, pw, ph, 8); ctx.fillStyle = '#1b1230'; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = ui.accent || '#ffd35a'; ctx.stroke();
     ctx.textBaseline = 'middle'; ctx.textAlign = 'center'; ctx.font = ui.F(13, true); ctx.fillStyle = ui.accent || '#ffd35a'; ctx.fillText('STATISTIQUES', W / 2, py + 16);
     // LED : verte = service de comptage joignable, rouge = injoignable, grise = test en cours
@@ -8674,13 +8713,15 @@ AK.config({
     ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.beginPath(); ctx.arc(lx - 1.4, ly - 1.4, 1.4, 0, 6.2832); ctx.fill();
     ctx.textAlign = 'left'; ctx.font = ui.F(9.5, true); ctx.fillStyle = col;
     ctx.fillText(etat.led === 'ok' ? 'Service de comptage : en ligne' : etat.led === 'ko' ? 'Service de comptage : injoignable' : 'Service de comptage : test…', lx + 14, ly);
-    const lignes = [['Vues totales', etat.vues], ['Visiteurs uniques', etat.uniques], ['Parties gagnées (élu·e)', etat.elu], ['Parties perdues (battu·e)', etat.battu]];
+    const d = etat.duree, pc = (x) => Math.round(x * 100) + ' %';
+    const lignes = [['Vues totales', fmt(etat.vues)], ['Visiteurs uniques', fmt(etat.uniques)], ['Parties gagnées (élu·e)', fmt(etat.elu)], ['Parties perdues (battu·e)', fmt(etat.battu)],
+      ['Temps de jeu moyen', d ? fmtDuree(d.moyenne) : 'trop tôt'], ['Joueurs qui jouent > 10 min', d ? pc(d.pct10) : '—']];
     lignes.forEach(([lab, v], i) => {
-      const y = py + 62 + i * 16; ctx.textAlign = 'left'; ctx.font = ui.F(10.5, false); ctx.fillStyle = '#d6ccee'; ctx.fillText(lab, px + 18, y);
-      ctx.textAlign = 'right'; ctx.font = ui.F(11.5, true); ctx.fillStyle = '#ffffff'; ctx.fillText(etat.maj ? fmt(v) : '…', px + pw - 18, y);
+      const y = py + 62 + i * 16 + (i >= 4 ? 4 : 0); ctx.textAlign = 'left'; ctx.font = ui.F(10.5, false); ctx.fillStyle = '#d6ccee'; ctx.fillText(lab, px + 18, y);
+      ctx.textAlign = 'right'; ctx.font = ui.F(11.5, true); ctx.fillStyle = '#ffffff'; ctx.fillText(etat.maj ? v : '…', px + pw - 18, y);
     });
     ctx.textAlign = 'center'; ctx.font = ui.F(7.5, false); ctx.fillStyle = 'rgba(255,255,255,0.45)';
-    ctx.fillText(etat.led === 'ko' && etat.maj ? 'dernières valeurs connues — compteurs anonymes' : 'compteurs anonymes, mis à jour en direct', W / 2, py + ph - 20);
+    ctx.fillText(etat.led === 'ko' && etat.maj ? 'dernières valeurs connues — compteurs anonymes' : 'temps = joueurs actifs ≥ 30 s (hors bots, onglet inactif) · compteurs anonymes', W / 2, py + ph - 20);
     if (t > 0.3) ctx.fillText('clic / échap pour fermer', W / 2, py + ph - 9);
     ctx.restore();
   }
