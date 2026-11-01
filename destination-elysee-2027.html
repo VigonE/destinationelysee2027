@@ -8769,6 +8769,73 @@ AK.config({
 })(globalThis.AK);
 
 
+/* ===== game/zz-occultation.js ===== */
+// ============================================================================
+//  V37 — LES PERSONNAGES PASSENT DERRIÈRE LES MEUBLES (rendu seul).
+//  Pour chaque lieu, une liste de « caches » : [x, y, largeur, hauteur, base] en coordonnées de scène.
+//  Quand un personnage a les pieds plus haut que la base d'un meuble (il est derrière lui) et qu'il le chevauche,
+//  le morceau de décor correspondant est recopié par‑dessus lui depuis le décor déjà peint : le plateau, le pied,
+//  le comptoir passent devant ses jambes, comme dans les vrais jeux SCUMM (masques de profondeur).
+//  Plateaux, pieds et dossiers sont découpés séparément : on voit les jambes entre les pieds d'une table.
+//  Aucune zone de marche, aucun hotspot, aucune position modifiés. `?occ=0` désactive ; F2 (debug) les montre en bleu.
+// ============================================================================
+(function (AK) {
+  'use strict';
+  const T = (x, y, w, h, b) => [x, y, w, h, b];
+  // table à plateau + deux pieds avant ; items = petits objets posés dessus
+  const table = (x, y, w, h, legH, b, legW = 7, items = []) => [T(x, y, w, h, b), T(x + 3, y + h, legW, legH, b), T(x + w - 3 - legW, y + h, legW, legH, b), ...items.map((r) => T(r[0], r[1], r[2], r[3], b))];
+  const chair = (x, y0, w, back, side, b) => [T(x, y0 + back, w, 8, b), T(x + 3, y0 + back + 8, 3, b - y0 - back - 8, b), T(x + w - 6, y0 + back + 8, 3, b - y0 - back - 8, b), T(side < 0 ? x : x + w - 11, y0, 11, back, b)];
+  const OCC = {
+    accueil: [...table(225, 175, 213, 21, 20, 216, 8), T(194, 180, 26, 36, 216), T(429, 180, 32, 36, 216)],
+    assemblee: [...table(235, 207, 123, 15, 14, 236, 8)],
+    barrage: [T(15, 150, 150, 57, 207), T(170, 192, 40, 33, 225), ...table(260, 200, 76, 8, 14, 222, 5), T(284, 184, 32, 16, 222), T(430, 172, 120, 40, 212), T(560, 178, 72, 40, 218)],
+    bercy: [...table(300, 189, 186, 21, 17, 226, 9), T(248, 205, 31, 35, 240), T(560, 217, 66, 28, 245)],
+    bourse_travail: [T(240, 186, 140, 10, 196), T(288, 150, 45, 40, 196), T(190, 142, 58, 48, 192), ...table(437, 180, 76, 10, 17, 207, 5), ...[60, 95, 131, 167, 204, 395, 435, 475, 515].map((cx) => T(cx - 12, 177, 24, 50, 227))],
+    bureau_vote: [...table(194, 214, 128, 11, 14, 239, 5), ...table(341, 214, 156, 11, 14, 239, 5), T(382, 147, 76, 66, 213)],
+    cafe_commerce: [T(208, 163, 240, 52, 214), T(57, 182, 62, 14, 218), T(85, 195, 6, 23, 218), T(140, 205, 58, 17, 239), T(165, 222, 6, 17, 239), T(117, 197, 26, 40, 237)],
+    cnccfp: [...table(210, 190, 198, 11, 16, 216, 6, [[272, 164, 36, 28], [323, 160, 30, 32], [228, 184, 40, 8]])],
+    commission_finances: [T(195, 195, 252, 37, 232), T(150, 182, 38, 50, 232), T(460, 182, 40, 50, 232)],
+    conseil_constit: [...table(245, 209, 182, 19, 18, 245, 7, [[256, 194, 90, 15]]), ...table(65, 215, 102, 10, 14, 239, 6, [[80, 187, 45, 28]]), T(557, 175, 43, 40, 215)],
+    cour_matignon: [T(30, 142, 50, 61, 203), T(210, 143, 44, 8, 196), T(211, 150, 5, 45, 196), T(247, 150, 5, 45, 196), T(222, 175, 26, 22, 197), T(392, 175, 26, 22, 197), T(497, 186, 130, 45, 231)],
+    elysee: [...table(190, 203, 278, 16, 13, 232, 10, [[392, 167, 26, 33]]), T(129, 167, 44, 64, 231), T(517, 167, 46, 64, 231), T(295, 137, 50, 66, 207)],
+    hemicycle: [T(0, 191, 216, 30, 221), T(260, 166, 133, 32, 198)],
+    mairie: [T(197, 197, 226, 14, 214), ...[212, 246, 280, 314, 348, 382].map((x) => T(x, 188, 22, 10, 214)), T(300, 180, 30, 18, 214), ...[226, 282, 339, 395].map((x) => T(x, 211, 27, 27, 238))],
+    maison_gauche: [...table(223, 189, 176, 11, 14, 214, 6, [[240, 177, 26, 12], [290, 176, 26, 14], [333, 178, 30, 12], [358, 172, 10, 16], [375, 165, 26, 25]]), ...chair(200, 165, 28, 36, -1, 227), ...chair(397, 165, 28, 36, 1, 227)],
+    matignon: [T(128, 163, 46, 64, 228), T(228, 163, 46, 64, 228), T(180, 197, 40, 10, 228), T(196, 207, 8, 21, 228), T(485, 196, 155, 27, 236), T(532, 137, 48, 66, 203)],
+    meeting: [T(38, 219, 150, 11, 232), T(50, 182, 60, 40, 223), T(236, 186, 59, 45, 232), T(328, 220, 122, 10, 232), T(345, 190, 38, 30, 232), T(537, 170, 53, 66, 236)],
+    palais_royal: [T(42, 180, 36, 34, 214), T(99, 177, 36, 43, 220), T(150, 189, 36, 31, 220), T(402, 177, 36, 41, 218), T(418, 185, 36, 30, 215), T(458, 171, 36, 49, 220), T(516, 179, 36, 36, 215), T(576, 172, 36, 46, 218), T(166, 144, 72, 60, 204)],
+    permanence: [...table(37, 185, 166, 10, 17, 212, 6, [[57, 165, 30, 22], [120, 176, 20, 8], [142, 170, 22, 16], [162, 166, 26, 20]]), ...chair(235, 181, 30, 35, -1, 242), ...chair(370, 181, 30, 35, 1, 242), ...table(287, 206, 65, 6, 10, 222, 4)],
+    qg: [...table(52, 176, 240, 12, 24, 212, 7, [[54, 165, 24, 13], [80, 168, 30, 13], [112, 160, 36, 22], [160, 168, 28, 14], [198, 170, 22, 13], [214, 162, 14, 20], [236, 160, 30, 17]]), T(278, 183, 35, 40, 222), ...table(318, 190, 96, 12, 14, 216, 6, [[334, 165, 52, 26], [392, 182, 20, 10]]), T(420, 178, 22, 18, 197)],
+    salon: [T(452, 142, 112, 42, 214), ...[462, 478, 530, 545].map((x) => T(x, 184, 8, 30, 214)), T(550, 150, 20, 30, 214), T(418, 207, 155, 20, 228), T(395, 200, 25, 29, 229)],
+    studio: [T(225, 196, 200, 35, 232), T(150, 160, 55, 46, 220), T(152, 205, 52, 14, 220), T(60, 170, 70, 80, 250), T(540, 170, 80, 80, 250), T(26, 205, 38, 50, 255), T(570, 196, 62, 34, 230)],
+  };
+  AK.OCCULTATION = OCC;
+
+  if (!AK.SceneRenderer || typeof window === 'undefined') return;
+  try { if (/[?&]occ=0(&|$)/.test(location.search || '')) return; } catch (e) { /* ignoré */ }
+  const pr = AK.SceneRenderer.prototype; const d0 = pr.drawActorLit; const dbg0 = pr.drawDebug;
+  pr.drawActorLit = function (sc, ch, pose) {
+    const r = d0.apply(this, arguments);
+    try {
+      const L = OCC[sc.id]; if (!L) return r;
+      const { bg } = this.bake(sc); const k = bg.width / this.W; const s = pose.scale || 1, hs = (ch.look && ch.look.height) || 1;
+      const ax0 = pose.x - 26 * s, ax1 = pose.x + 26 * s, ay0 = pose.y - 128 * s * hs, ay1 = pose.y + 2;
+      const w = this.wctx; let saved = false;
+      for (const o of L) {
+        if (pose.y >= o[4]) continue;                                           // devant le meuble : rien à cacher
+        if (o[0] > ax1 || o[0] + o[2] < ax0 || o[1] > ay1 || o[1] + o[3] < ay0) continue;
+        if (!saved) { w.save(); w.setTransform(1, 0, 0, 1, 0, 0); saved = true; }
+        const sx = Math.max(0, Math.floor(o[0] * k)), sy = Math.max(0, Math.floor(o[1] * k)), sw = Math.min(bg.width - sx, Math.ceil(o[2] * k) + 1), sh = Math.min(bg.height - sy, Math.ceil(o[3] * k) + 1);
+        if (sw > 0 && sh > 0) w.drawImage(bg, sx, sy, sw, sh, sx, sy, sw, sh);
+      }
+      if (saved) w.restore();
+    } catch (e) { /* rendu seulement */ }
+    return r;
+  };
+  if (dbg0) pr.drawDebug = function (w) { dbg0.call(this, w); try { const sc = this.game.sc(); for (const o of OCC[sc.id] || []) { w.strokeStyle = 'rgba(80,160,255,.9)'; w.lineWidth = 1; w.strokeRect(o[0], o[1], o[2], o[3]); w.fillStyle = 'rgba(80,160,255,.9)'; w.fillRect(o[0], o[4] - 1, o[2], 2); } } catch (e) { /* */ } };
+})(globalThis.AK);
+
+
 /* ===== game/zz-partitions.js ===== */
 // ============================================================================
 //  V36 — BANDE ORIGINALE « façon iMUSE / MIDI » (Monkey Island, Day of the Tentacle) : partitions + synthèse.
