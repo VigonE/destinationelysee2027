@@ -6535,14 +6535,15 @@ AK.config({
     ],
   };
   L.cnccfp = {
-    grade: { shadow: '#1a2216', high: '#fff0cc', amt: 0.11, sat: 1.0, con: 1.1 }, bloom: 0.45, sheen: 0.14,
-    sources: [{ t: 'lamp', x: 300, y: 24, r: 190, color: '#ffeab8', a: 0.5 }],
+    grade: { shadow: '#1a2030', high: '#f4f6ff', amt: 0.1, sat: 0.98, con: 1.08 }, bloom: 0.4, sheen: 0.08,
+    sources: [{ t: 'window', x: 168, y: 20, w: 70, h: 128, color: '#dfe8f4', a: 0.42, cols: 2, dx: 0.2 },
+      { t: 'lamp', x: 300, y: 16, r: 190, color: '#f2f6ff', a: 0.42 }, { t: 'lamp', x: 96, y: 16, r: 140, color: '#f2f6ff', a: 0.3 }, { t: 'lamp', x: 504, y: 16, r: 140, color: '#f2f6ff', a: 0.3 }],
   };
   L.commission_finances = {
-    grade: { shadow: '#1a2418', high: '#fff0cc', amt: 0.11, sat: 1.04, con: 1.1 }, bloom: 0.5, sheen: 0.24,
+    grade: { shadow: '#2a1218', high: '#ffe6c0', amt: 0.11, sat: 1.04, con: 1.1 }, bloom: 0.5, sheen: 0.24,
     sources: [
       { t: 'window', x: 90, y: 32, w: 98, h: 112, color: '#cfe0ff', a: 0.4, cols: 2, dx: 0.2 },
-      { t: 'screen', x: 250, y: 38, w: 140, h: 58, color: '#90ffb0', a: 0.28 },
+      { t: 'screen', x: 250, y: 38, w: 140, h: 58, color: '#9ab8ff', a: 0.24 },
       { t: 'lamp', x: 320, y: 10, r: 210, color: '#ffe8b0', a: 0.5 },
     ],
   };
@@ -10668,15 +10669,62 @@ AK.piece({
   walk: { areas: [[[18, 192], [586, 192], [634, 258], [6, 258]]], holes: [[[216, 192], [404, 192], [404, 214], [216, 214]]] },
   spawns: { default: [110, 240, 'r'] },
   variant: (s) => (s.flag('armoire_cc_ouverte') ? 'o' : '') + (s.hidden('cachet_expert') ? 'c' : '') + (s.hidden('agrafeuse') ? 'a' : '') + (s.flag('seq_comptes_campagne') ? 'F' : ''),
-  lighting: { ambient: { color: '#1c2218', alpha: 0.14 }, key: { x: 300, y: 0, color: '#fff2d0', alpha: 0.3, shadow: true, shadowAlpha: 0.26 }, lights: [{ x: 300, y: 30, r: 200, color: '#ffeab8', alpha: 0.22 }] },
+  lighting: { ambient: { color: '#1c2028', alpha: 0.14 }, key: { x: 300, y: 0, color: '#f2f6ff', alpha: 0.3, shadow: true, shadowAlpha: 0.26 }, lights: [{ x: 300, y: 30, r: 200, color: '#ffeab8', alpha: 0.22 }] },
   fx: [{ type: 'dust', n: 28, alpha: 0.4 }],
   paint(P, s) {
     const c = P.ctx; const G = (g, st) => { st.forEach(([k, col]) => g.addColorStop(k, col)); return g; };
     const ouverte = s.flag('armoire_cc_ouverte');
-    // bureaux de l'administration : crépi clair, lambris vert, moulures
-    P.plaster(0, 0, 640, 190, { base: '#e0e2ce', stain: '#c4c8b0', stains: 8, stainSize: 38 });
-    P.lambrisHD(0, 148, 640, 42, { tone: '#566a46', panel: 46 }); P.rect(0, 146, 640, 3, '#d4b45a'); P.cornicheHD(0, 0, 640, { tone: '#cdbc86' });
-    P.floor(190, 264, { type: 'tiles', a: '#a6a696', b: '#8a8a7c', top: [0, 640], bottom: [-120, 760], rows: 8, cols: 14 }); P.reflet(264, 60, 0.12);
+    // V32 — réalisme : la Commission occupe des bureaux administratifs modernes dans un immeuble haussmannien du centre de Paris
+    // (rue du Louvre) : murs peints en blanc cassé à moulures, haut plafond, grande fenêtre sur l'immeuble d'en face, moquette grise en dalles,
+    // archives en boîtes, photocopieur, éclairage par suspensions LED — plus rien du lambris vert « salle de classe ».
+    P.rect(0, 0, 640, 190, ['#efede6', '#dedbd1']);
+    c.save(); c.lineWidth = 1;
+    for (let x = 0; x < 640; x += 80) {                                     // panneaux moulurés haussmanniens (ombre + lumière)
+      c.strokeStyle = 'rgba(120,110,95,.32)'; c.strokeRect(x + 9.5, 24.5, 62, 108); c.strokeRect(x + 9.5, 146.5, 62, 30);
+      c.strokeStyle = 'rgba(255,255,255,.75)'; c.strokeRect(x + 10.5, 25.5, 62, 108); c.strokeRect(x + 10.5, 147.5, 62, 30);
+    }
+    c.fillStyle = 'rgba(120,110,95,.25)'; c.fillRect(0, 140, 640, 1.2); c.fillStyle = 'rgba(255,255,255,.7)'; c.fillRect(0, 141.2, 640, 1); c.restore();
+    P.cornicheHD(0, 0, 640, { tone: '#ece8dc' });
+    P.rect(0, 181, 640, 9, ['#f4f2ec', '#cfcbc0'], { wob: 0 }); P.rect(0, 189, 640, 1.2, 'rgba(60,54,46,.5)', { wob: 0 });   // plinthe peinte
+    // moquette en dalles gris anthracite (ton sur ton), joints à peine visibles
+    P.floor(190, 264, { type: 'tiles', a: '#5f6570', b: '#585e69', top: [0, 640], bottom: [-120, 760], rows: 7, cols: 12 });
+    c.save(); const rr = P.rng('moquette'); for (let i = 0; i < 900; i++) { const y = 190 + rr() * 74; c.fillStyle = rr() < 0.5 ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.07)'; c.fillRect(rr() * 640, y, 1, 1); } c.restore();
+    // grande fenêtre sur la rue du Louvre : façade haussmannienne d'en face, toit de zinc, ciel parisien
+    c.save(); c.beginPath(); c.rect(168, 20, 70, 128); c.clip();
+    c.fillStyle = G(c.createLinearGradient(0, 20, 0, 80), [[0, '#9db6d4'], [1, '#d9e2ea']]); c.fillRect(168, 20, 70, 128);
+    c.fillStyle = '#7d8592'; c.beginPath(); c.moveTo(160, 64); c.lineTo(176, 44); c.lineTo(244, 44); c.lineTo(246, 64); c.closePath(); c.fill();          // toit de zinc
+    c.fillStyle = '#6a717c'; for (const x of [186, 214]) { c.fillRect(x, 34, 6, 12); c.fillStyle = '#b07a5a'; c.fillRect(x + 1, 31, 1.6, 4); c.fillRect(x + 3.4, 31, 1.6, 4); c.fillStyle = '#6a717c'; }
+    c.fillStyle = '#e0d4ba'; c.beginPath(); c.arc(203, 54, 6, Math.PI, 0); c.fill(); c.fillStyle = '#4a5260'; c.fillRect(200, 50, 6, 6);                // lucarne
+    c.fillStyle = G(c.createLinearGradient(0, 64, 0, 148), [[0, '#ddd0b2'], [1, '#c2b496']]); c.fillRect(160, 64, 90, 90);                          // façade en pierre de taille
+    for (let r2 = 0; r2 < 3; r2++) for (let k = 0; k < 3; k++) {
+      const wx = 174 + k * 22, wy = 72 + r2 * 26; c.fillStyle = '#556072'; c.fillRect(wx, wy, 10, 18); c.fillStyle = 'rgba(200,220,240,.35)'; c.fillRect(wx + 1, wy + 1, 4, 16);
+      c.fillStyle = 'rgba(80,70,50,.35)'; c.fillRect(wx - 1.5, wy - 2, 13, 1.6);
+    }
+    c.fillStyle = '#1e1e24'; c.fillRect(166, 98, 76, 1.6); for (let x = 168; x < 242; x += 3) c.fillRect(x, 92, 0.8, 6);                          // balcon filant en fer forgé
+    c.fillStyle = 'rgba(80,70,50,.25)'; for (let y = 68; y < 148; y += 6) c.fillRect(160, y, 90, 0.6);                                        // assises de pierre
+    c.restore();
+    c.save(); c.strokeStyle = '#f6f4ee'; c.lineWidth = 3; c.strokeRect(168, 20, 70, 128); c.lineWidth = 2.2; c.beginPath(); c.moveTo(203, 20); c.lineTo(203, 148);
+    for (const y of [52, 84, 116]) { c.moveTo(168, y); c.lineTo(238, y); } c.stroke();
+    c.strokeStyle = 'rgba(30,24,36,.85)'; c.lineWidth = 0.8; c.strokeRect(166.5, 18.5, 73, 131); c.fillStyle = '#c9c4b6'; c.fillRect(201.6, 90, 2.8, 14);   // crémone
+    c.fillStyle = G(c.createLinearGradient(0, 148, 0, 154), [[0, '#f8f6f0'], [1, '#bdb8aa']]); c.fillRect(162, 148, 82, 6); c.strokeRect(162.5, 148.5, 81, 5); c.restore();
+    // radiateur en fonte sous la fenêtre
+    c.save(); c.fillStyle = '#e8e4da'; c.fillRect(172, 160, 62, 20); c.strokeStyle = 'rgba(60,54,46,.55)'; c.lineWidth = 0.8; c.strokeRect(172.5, 160.5, 61, 19);
+    for (let x = 176; x < 232; x += 4) { c.fillStyle = 'rgba(120,112,98,.35)'; c.fillRect(x, 162, 1, 16); } c.fillStyle = '#9a948a'; c.fillRect(178, 180, 3, 10); c.fillRect(226, 180, 3, 10); c.restore();
+    // affichage réglementaire : panneau de liège, notes punaisées
+    c.save(); c.fillStyle = '#b58a5a'; c.fillRect(8, 40, 40, 30); c.strokeStyle = '#5a4026'; c.lineWidth = 1.2; c.strokeRect(8, 40, 40, 30);
+    [[11, 43, 14, 18, '#fbfaf4'], [27, 44, 17, 12, '#fff3b8'], [28, 58, 15, 10, '#e8f0ff']].forEach(([x, y, w, h, col]) => { c.fillStyle = col; c.fillRect(x, y, w, h); c.fillStyle = 'rgba(40,40,60,.45)'; for (let i = 0; i < 3; i++) c.fillRect(x + 2, y + 3 + i * 3.4, w - 4 - (i % 2) * 3, 0.8); c.fillStyle = '#c8102e'; c.fillRect(x + w / 2 - 0.8, y - 0.8, 1.6, 1.6); }); c.restore();
+    // chariot d'archives : boîtes de comptes de campagne étiquetées
+    c.save(); c.fillStyle = '#8a8e96'; for (const x of [8, 46]) c.fillRect(x, 96, 2, 92); for (const y of [96, 128, 160]) c.fillRect(8, y + 26, 40, 2.4);
+    const rb = P.rng('archives');
+    for (const y of [100, 132, 164]) for (let k = 0; k < 3; k++) { const x = 11 + k * 12; c.fillStyle = ['#2f4a72', '#3a5682', '#26405f'][Math.floor(rb() * 3)]; c.fillRect(x, y, 10, 22); c.strokeStyle = 'rgba(14,18,30,.8)'; c.lineWidth = 0.6; c.strokeRect(x + 0.3, y + 0.3, 9.4, 21.4); c.fillStyle = '#f2efe4'; c.fillRect(x + 2, y + 4, 6, 7); c.fillStyle = 'rgba(30,30,40,.6)'; c.fillRect(x + 3, y + 6, 4, 0.7); c.fillRect(x + 3, y + 8, 3, 0.7); }
+    for (const x of [10, 46]) { c.fillStyle = '#222'; c.beginPath(); c.arc(x, 190, 2, 0, 7); c.fill(); } c.restore();
+    // photocopieur multifonction
+    c.save(); P.shadow(500, 192, 36, 5, 0.35);
+    c.fillStyle = G(c.createLinearGradient(468, 0, 532, 0), [[0, '#e6e6e2'], [0.6, '#cfcfca'], [1, '#a8a8a2']]); c.fillRect(468, 150, 64, 42); c.strokeStyle = 'rgba(30,30,40,.8)'; c.lineWidth = 0.9; c.strokeRect(468.5, 150.5, 63, 41);
+    c.fillStyle = '#5a5e66'; c.fillRect(470, 144, 60, 6); c.strokeRect(470.5, 144.5, 59, 5); c.fillStyle = '#2a2e36'; c.fillRect(512, 152, 16, 7); c.fillStyle = '#7fd0ff'; c.fillRect(514, 153.4, 8, 4); c.fillStyle = '#5ae88a'; c.fillRect(524, 154, 2, 2);
+    c.fillStyle = 'rgba(0,0,0,.18)'; for (const y of [164, 174, 184]) c.fillRect(472, y, 56, 1); c.fillStyle = '#f6f6f2'; c.fillRect(472, 160, 22, 3); c.restore();
+    // plante verte de bureau
+    P.planteHD(150, 192, 30);
     // texte encadré : la Constitution (indice du code de l'armoire)
     P.cadreDore(252, 30, 124, 90, ['#f8f0d6', '#d8ccaa']);
     c.save(); c.fillStyle = '#1d3f9a'; c.fillRect(262, 40, 104, 9); c.fillStyle = '#fff'; c.font = 'bold 6px Arial'; c.textAlign = 'center'; c.fillText('LOI • CAMPAGNES', 314, 46.4);
@@ -10700,13 +10748,22 @@ AK.piece({
     P.classeurHD(540, 96, 44, 96, { n: 4 }); P.classeurHD(590, 96, 44, 96, { n: 4 });
     P.tricolore(430, 190, 124);
     // bureau du rapporteur : lampe de banquier, dossiers, agrafeuse
-    P.tableHD(216, 216, 188, 24, { tone: '#5e3e24', depth: 10 });
+    // bureau moderne : plateau stratifié chêne clair, voile de fond gris, piètement métal ; écran et clavier
+    c.save(); P.shadow(310, 215, 104, 6, 0.4);
+    c.fillStyle = '#7c8088'; for (const x of [214, 400]) c.fillRect(x, 198, 4, 18);
+    c.fillStyle = G(c.createLinearGradient(0, 199, 0, 214), [[0, '#6a6e78'], [1, '#4a4e58']]); c.fillRect(222, 199, 174, 13); c.strokeStyle = 'rgba(20,18,30,.8)'; c.lineWidth = 0.8; c.strokeRect(222.5, 199.5, 173, 12);
+    c.fillStyle = G(c.createLinearGradient(0, 192, 0, 198), [[0, '#d8c8a8'], [1, '#b8a482']]); c.fillRect(210, 192, 198, 5); c.fillStyle = '#8a7656'; c.fillRect(210, 197, 198, 2.4); c.strokeRect(210.5, 192.5, 197, 6.4);
+    c.fillStyle = '#1c1e24'; c.fillRect(272, 166, 36, 22); c.fillStyle = G(c.createLinearGradient(274, 168, 306, 186), [[0, '#2c4a7a'], [1, '#14223e']]); c.fillRect(274, 168, 32, 18);
+    c.fillStyle = 'rgba(255,255,255,.55)'; for (let i = 0; i < 4; i++) c.fillRect(277, 172 + i * 3.4, 20 - (i % 2) * 6, 0.9); c.fillStyle = '#c8102e'; c.fillRect(277, 169.6, 8, 1.4);
+    c.fillStyle = '#2a2c32'; c.fillRect(288, 188, 4, 4); c.fillRect(282, 191.4, 16, 1.4); c.fillStyle = '#e0e0dc'; c.fillRect(278, 193, 26, 2.4); c.restore();
     P.dossiers(228, 200, 40, 4); P.dossiers(236, 192, 28, 2);
     c.save(); c.fillStyle = '#2a2a30'; c.fillRect(335, 176, 3, 16); c.fillStyle = G(c.createLinearGradient(0, 192, 0, 196), [[0, '#8a8a92'], [1, '#34343c']]); c.fillRect(326, 191, 20, 4); c.beginPath(); c.moveTo(323, 168); c.quadraticCurveTo(338, 156, 353, 168); c.lineTo(348, 174); c.lineTo(328, 174); c.closePath(); c.fillStyle = G(c.createLinearGradient(0, 160, 0, 174), [[0, '#3aa26a'], [1, '#145a34']]); c.fill(); c.strokeStyle = 'rgba(22,14,32,.9)'; c.lineWidth = 0.9; c.stroke(); c.restore(); P.glow(338, 178, 32, '#ffe8a0', 0.42);
     if (!s.hidden('agrafeuse')) { c.save(); c.fillStyle = G(c.createLinearGradient(0, 186, 0, 195), [[0, '#aab0bc'], [1, '#4a505c']]); c.beginPath(); c.moveTo(368, 194); c.lineTo(368, 189); c.quadraticCurveTo(380, 183, 396, 188); c.lineTo(396, 194); c.closePath(); c.fill(); c.strokeStyle = 'rgba(22,14,32,.9)'; c.lineWidth = 0.9; c.stroke(); c.fillStyle = '#2a2e38'; c.fillRect(364, 191, 10, 4); c.restore(); }
     if (s.flag('seq_comptes_campagne')) { c.save(); c.fillStyle = G(c.createLinearGradient(0, 188, 0, 202), [[0, '#5aaa6a'], [1, '#2a6a3a']]); c.fillRect(278, 188, 36, 14); c.strokeStyle = 'rgba(22,14,32,.9)'; c.lineWidth = 0.9; c.strokeRect(278, 188, 36, 14); c.fillStyle = '#e8dcc0'; c.fillRect(284, 192, 24, 2); c.restore(); }
-    P.hangingLamp(300, 0, 22, {});
-    P.vignette(0.42, '#0a0e08');
+    // suspensions LED (bureaux rénovés)
+    c.save(); for (const x of [96, 300, 504]) { c.strokeStyle = 'rgba(40,40,50,.6)'; c.lineWidth = 0.6; c.beginPath(); c.moveTo(x - 22, 0); c.lineTo(x - 22, 12); c.moveTo(x + 22, 0); c.lineTo(x + 22, 12); c.stroke();
+      c.fillStyle = '#3a3e46'; c.fillRect(x - 30, 12, 60, 3.4); c.fillStyle = '#f8fbff'; c.fillRect(x - 28, 15, 56, 1.6); P.glow(x, 17, 26, '#f2f6ff', 0.35); } c.restore();
+    P.vignette(0.36, '#0a0c12');
   },
   hotspots: [
     { id: 'plaque_constitution', name: 'Texte encadré', rect: [252, 30, 124, 90], walkTo: [314, 240, 'b'], far: true,
@@ -10753,19 +10810,40 @@ AK.piece({
   id: 'commission_finances', name: 'Commission des finances', music: 'baroque', sortie: false,
   walk: { areas: [[[18, 196], [586, 196], [634, 258], [6, 258]]], holes: [[[190, 196], [450, 196], [450, 218], [190, 218]]] },
   spawns: { default: [96, 240, 'r'] },
-  lighting: { ambient: { color: '#1c2418', alpha: 0.14 }, key: { x: 320, y: 0, color: '#fff0d0', alpha: 0.3, shadow: true, shadowAlpha: 0.28 }, lights: [{ x: 320, y: 40, r: 210, color: '#ffe8b0', alpha: 0.26 }] },
+  lighting: { ambient: { color: '#28141a', alpha: 0.14 }, key: { x: 320, y: 0, color: '#fff0d0', alpha: 0.3, shadow: true, shadowAlpha: 0.28 }, lights: [{ x: 320, y: 40, r: 210, color: '#ffe8b0', alpha: 0.26 }] },
   fx: [{ type: 'dust', n: 30, alpha: 0.4 }, { type: 'shafts', color: '#fff0c8', alpha: 0.1, beams: [{ top: [60, 140, 20], bottom: [10, 180, 200], alpha: 0.12 }] }],
   paint(P, s) {
     const c = P.ctx; const G = (g, st) => { st.forEach(([k, col]) => g.addColorStop(k, col)); return g; };
-    P.boiserie(0, 640, 14, 196, { base: '#dccda8', panel: '#ecdfbc' });
-    P.cornicheHD(0, 0, 640, { tone: '#e8dcb8' });
-    P.floor(196, 264, { type: 'boards', a: '#74482a', b: '#5c381c', top: [0, 640], bottom: [-120, 760], rows: 8 });
-    P.rug(320, 246, 260, 11, { color: '#16409a' }); P.reflet(264, 60, 0.12);
+    // V32 — réalisme : salle de commission du Palais Bourbon — tenture de damas cramoisi encadrée de chêne sombre et de filets dorés,
+    // lambris de chêne, parquet en point de Hongrie, tapis rouge, rideaux cramoisis, écrans plats de retransmission, fauteuils de velours rouge.
+    // (Fini le « salon crème et or » qui la confondait avec le Conseil constitutionnel, Matignon ou l'Élysée.)
+    P.rect(0, 0, 640, 196, ['#7e1e26', '#5c141b']);
+    c.save(); const rd = P.rng('damas');
+    for (let y = 22; y < 128; y += 12) for (let x = (y / 12) % 2 ? 6 : 0; x < 640; x += 12) {   // motif de damas : fleurons ton sur ton
+      c.fillStyle = 'rgba(30,4,8,.22)'; c.beginPath(); c.ellipse(x, y, 2.4, 3.6, 0, 0, 7); c.fill(); c.fillRect(x - 0.4, y - 5.5, 0.8, 11);
+      c.fillStyle = 'rgba(255,170,150,.06)'; c.beginPath(); c.ellipse(x - 0.8, y - 1, 1, 1.8, 0, 0, 7); c.fill();
+    }
+    c.restore();
+    c.save();
+    for (let x = 0; x <= 640; x += 80) {                                    // montants de chêne sombre à filet doré qui encadrent les lés de damas
+      c.fillStyle = G(c.createLinearGradient(x - 5, 0, x + 5, 0), [[0, '#2a160c'], [0.5, '#4e2e18'], [1, '#22120a']]); c.fillRect(x - 5, 14, 10, 116);
+      c.fillStyle = '#c9a24a'; c.fillRect(x - 6.5, 14, 1, 116); c.fillRect(x + 5.5, 14, 1, 116);
+    }
+    c.fillStyle = '#c9a24a'; c.fillRect(0, 18, 640, 1.2); c.fillRect(0, 127, 640, 1.2); c.restore();
+    P.boiserie(0, 640, 128, 196, { base: '#3e2414', panel: '#4e2e1a' });   // lambris de chêne à hauteur d'appui
+    c.save(); c.fillStyle = G(c.createLinearGradient(0, 126, 0, 132), [[0, '#6a4426'], [1, '#2a160c']]); c.fillRect(0, 126, 640, 6); c.fillStyle = '#d4ac52'; c.fillRect(0, 126, 640, 1); c.restore();
+    P.cornicheHD(0, 0, 640, { tone: '#d8c08a' });
+    P.parquet(196, 264, { a: '#8c5a2e', b: '#6e4422' });
+    P.rug(320, 246, 280, 11, { color: '#8e1a22' }); P.reflet(264, 60, 0.12);
+    // tableau d'histoire au‑dessus de la porte (séance de l'Assemblée au XIXe siècle)
+    c.save(); P.cadreDore(14, 24, 46, 52, ['#5a4a38', '#2a2018']);
+    c.fillStyle = 'rgba(200,160,100,.35)'; c.fillRect(18, 28, 38, 18); c.fillStyle = 'rgba(30,20,14,.7)'; for (let i = 0; i < 9; i++) c.fillRect(19 + i * 4, 52 + (i % 3), 2.4, 14 - (i % 3)); c.fillStyle = 'rgba(160,30,30,.6)'; c.fillRect(32, 48, 10, 6); c.restore();
     // fenêtre haute sur la cour d'honneur, tentures bleu roi
     P.fenetre(104, 34, 70, 110, { cols: 2, rows: 4 });
-    P.tentureHD(88, 28, 14, 116, '#16409a'); P.tentureHD(176, 28, 14, 116, '#16409a'); P.rayons(138, 36, 220, 220, { n: 4, spread: 50, a: 0.14 });
+    P.tentureHD(88, 28, 14, 116, '#8a1c24'); P.tentureHD(176, 28, 14, 116, '#8a1c24'); P.rayons(138, 36, 220, 220, { n: 4, spread: 50, a: 0.14 });
     // écran de l'ordre du jour
-    P.cadreDore(250, 36, 140, 58, ['#23304a', '#10182a']);
+    // écran plat de retransmission (cadre noir mat, support mural)
+    c.save(); c.fillStyle = '#2a2a30'; c.fillRect(316, 30, 8, 8); c.fillStyle = '#0b0b10'; c.fillRect(250, 36, 140, 58); c.fillStyle = 'rgba(255,255,255,.12)'; c.fillRect(250, 36, 140, 1); c.strokeStyle = 'rgba(0,0,0,.9)'; c.lineWidth = 1; c.strokeRect(250.5, 36.5, 139, 57); c.fillStyle = '#d8d8e0'; c.fillRect(318, 91, 4, 1.4); c.restore();
     c.save(); c.fillStyle = G(c.createLinearGradient(0, 46, 0, 84), [[0, '#0e1626'], [1, '#05080e']]); c.fillRect(260, 46, 120, 38); c.fillStyle = '#5ae88a'; c.font = 'bold 6px Arial'; c.textAlign = 'left'; c.fillText('ORDRE DU JOUR', 266, 56); c.fillStyle = 'rgba(255,255,255,.55)'; [[64, 100], [70, 70], [76, 90]].forEach(([y, w]) => c.fillRect(268, y, w, 1.6)); c.fillStyle = 'rgba(90,232,138,.16)'; c.fillRect(260, 46, 120, 8); c.restore();
     P.tricolore(430, 196, 130); P.drapeauEU(462, 196, 124);
     // tableau de recevabilité (art. 40) et gages
@@ -10777,11 +10855,11 @@ AK.piece({
     c.save(); c.fillStyle = G(c.createLinearGradient(0, 198, 0, 206), [[0, '#34864e'], [1, '#164a2a']]); c.fillRect(196, 198, 250, 8); c.strokeStyle = 'rgba(8,36,16,.9)'; c.lineWidth = 1; c.strokeRect(196, 198, 250, 8); c.restore();
     for (let i = 0; i < 8; i++) { const x = 206 + i * 30; c.save(); c.fillStyle = '#fffbea'; c.fillRect(x, 200, 16, 5); c.strokeStyle = 'rgba(122,106,58,.9)'; c.lineWidth = 0.6; c.strokeRect(x, 200, 16, 5); c.fillStyle = 'rgba(40,40,60,.5)'; c.fillRect(x + 2, 202, 12, 1); c.strokeStyle = '#2a2a30'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(x + 8, 200); c.bezierCurveTo(x + 8, 194, x + 11, 192, x + 10, 189); c.stroke(); c.fillStyle = '#14141c'; c.beginPath(); c.ellipse(x + 10, 188, 2.2, 3, 0.3, 0, 7); c.fill(); c.restore(); }
     P.dossiers(222, 205, 24, 3, {}); P.feuilleHD(330, 198, 22, 8, { color: '#e8d8a0' });
-    for (const x of [168, 480]) P.fauteuilDore(x, 232, 0.85, '#1d3f9a');
+    for (const x of [168, 480]) P.fauteuilDore(x, 232, 0.85, '#9a1c26');
     P.lustreHD(320, 0, 0.9);
     // porte du couloir des commissions
     P.door(10, 84, 52, 112, { wood: '#3a2a1c', handle: '#d4a017', arch: true, bands: false });
-    P.vignette(0.42, '#0a0e08');
+    P.vignette(0.42, '#100606');
   },
   hotspots: [
     { id: 'fenetre_cf', name: 'Fenêtre sur la cour', rect: [104, 34, 70, 110], far: true, desc: ['La cour du Palais Bourbon, derrière les carreaux. Les arbres perdent leurs feuilles ; le budget, lui, perd des voix.'] },
